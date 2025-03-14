@@ -23,7 +23,7 @@ ROLE_ID2 = 1271165198392365207  # Role global
 
 
 def create_shops_db():
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
    # c.execute("Drop table if exists users")
     # Création de la table users
@@ -62,7 +62,7 @@ def create_shops_db():
 
 # Ajouter de l'argent à un utilisateur
 def add_balance(user_id, amount):
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
     c.execute('SELECT argent FROM users WHERE user_id = ?', (user_id, ))
     result = c.fetchone()
@@ -76,7 +76,7 @@ def add_balance(user_id, amount):
 
 # Ajouter des niveaux à un utilisateur
 def add_niveau(user_id, amount):
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
     c.execute('SELECT niveau FROM users WHERE user_id = ?', (user_id, ))
     result = c.fetchone()
@@ -91,7 +91,7 @@ def add_niveau(user_id, amount):
 
 # Obtenir les niveaux d'un utilisateur
 def get_niveau(user_id):
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
     c.execute('SELECT niveau FROM users WHERE user_id = ?', (user_id, ))
     result = c.fetchone()
@@ -99,7 +99,7 @@ def get_niveau(user_id):
     return result[0] if result else 0
 
 def create_user(member: discord.Member):
-    conn = sqlite3.connect("shops.db")
+    conn = sqlite3.connect("../shops.db")
     cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (member.id,))
     if cursor.fetchone() is None:
@@ -228,7 +228,7 @@ async def donner(ctx, membre: discord.Member, montant: int):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def reset_niveau(ctx, membre: discord.Member):
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
     c.execute('SELECT niveau FROM users WHERE user_id = ?', (membre.id, ))
     result = c.fetchone()
@@ -249,7 +249,7 @@ async def reset_niveau(ctx, membre: discord.Member):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def reset_balance(ctx, membre: discord.Member):
-    conn = sqlite3.connect('shops.db')
+    conn = sqlite3.connect('../shops.db')
     c = conn.cursor()
     c.execute('SELECT argent FROM users WHERE user_id = ?', (membre.id, ))
     result = c.fetchone()
