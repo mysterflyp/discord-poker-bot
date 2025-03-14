@@ -387,3 +387,5 @@ async def get_pot(ctx):
         return
     else:    
         await ctx.send(f"Mises actuelles : {bot.game.pot}")
+
+
