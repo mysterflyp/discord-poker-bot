@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from db_manager import DBManager
-from poker_game import GameStatus
+from poker_game import GameStatus, FakeMember
 from views.test_view import TestView
 
 
@@ -254,13 +254,18 @@ class BotCommands(commands.Cog):
 
         await ctx.send("La partie commence maintenant !")
 
-        community_cards, player_hands = self.bot.game.start_game()
+        self.bot.game.start_game()
+        self.bot.game.start_betting_round()
+        await ctx.send ("La phase de mise commence! Chaque joueur peut miser, suivre, relancer ou se coucher")
+
+        player_hands = self.bot.game.get_players_hands()
         for player in self.bot.game.players:
             hand = player_hands.get(player, [])
-            self.bot.game.start_betting_round()
-            await ctx.send ("La phase de mise commence! Chaque joueur peut miser, suivre, relancer ou se coucher")
-            await player.send(f"Main de {player.name}: {hand}")
-    
+            if not isinstance(player, FakeMember):
+                await player.send(f"Main de {player.name}: {hand}")
+            else:
+                await ctx.send(f"Main de {player.name}: {hand}")
+
     # Commande pour miser, suivre, relancer
     @commands.command(name='miser')
     async def bet(self, ctx, amount: int):

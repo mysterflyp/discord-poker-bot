@@ -139,7 +139,7 @@ class PokerGame:
     def show_community_cards(self):
         return ' '.join(str(card) for card in self.community_cards)
 
-    def show_player_hands(self):
+    def get_players_hands(self):
         return {player: ' '.join(str(card) for card in cards) for player, cards in self.player_hands.items()}
 
     def start_betting_round(self):
@@ -155,7 +155,6 @@ class PokerGame:
 
         self._init_players()
         self.deal_cards()
-        return self.show_community_cards(), self.show_player_hands()
 
     def _init_players(self):
         for player in self.players:
