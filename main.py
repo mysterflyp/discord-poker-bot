@@ -1,4 +1,6 @@
 import os
+import traceback
+
 import discord
 import asyncio
 from discord.ext import commands, tasks
@@ -27,6 +29,24 @@ client = discord.Client(intents=discord.Intents.all())
 @bot.event
 async def on_ready():
     print(f"Connecté en tant que {bot.user}")
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Gestionnaire global des erreurs des commandes."""
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("❌ Cette commande n'existe pas.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("⚠️ Il manque un argument à la commande.")
+    elif isinstance(error, AttributeError):
+        print(f"❌ Erreur : {error}")  # Affiche l'erreur dans la console
+        error_traceback = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        print(error_traceback)  # Affiche la trace complète dans la console
+        await ctx.send("⚠️ Une erreur interne s'est produite.")
+    else:
+        print(f"🔴 Erreur inconnue : {error}")  # Affiche toute autre erreur
+        error_traceback = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        print(error_traceback)  # Affiche la trace complète dans la console
+        await ctx.send("⚠️ Une erreur inattendue est survenue.")
 
 # Chargement des extensions (Cog), approche asynchrone
 async def load_extensions():

@@ -193,6 +193,8 @@ class BotCommands(commands.Cog):
         if self.bot.game.started:
             await ctx.send("Un jeu de poker est déjà en cours!")
             return
+        else:
+            await ctx.send("Aucun jeu en cours!")
 
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")

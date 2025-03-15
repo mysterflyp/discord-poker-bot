@@ -1,5 +1,6 @@
 import random
 from collections import Counter
+from enum import Enum
 
 from db_manager import DBManager
 
@@ -24,9 +25,16 @@ class Deck:
     def draw(self):
         return self.cards.pop()
 
+class GameStatus(Enum):
+    """Enum pour représenter un statut."""
+    STOPPED = 0
+    TERMINE = 2
+    ANNULE = 3
+
 class PokerGame:
     def __init__(self, bot):
         self.bot = bot
+        self.status:GameStatus = GameStatus.STOPPED
         self._db: DBManager | None = self.bot.get_cog("DBManager")
         self.players = []  # List of players
         self.deck = Deck()
