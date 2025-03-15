@@ -266,6 +266,10 @@ class BotCommands(commands.Cog):
             else:
                 await ctx.send(f"Main de {player.name}: {hand}")
 
+        await ctx.send(f"C'est à {self.bot.game.current_player.name} de jouer")
+
+
+
     # Commande pour miser, suivre, relancer
     @commands.command(name='miser')
     async def bet(self, ctx, amount: int):
@@ -305,7 +309,7 @@ class BotCommands(commands.Cog):
         await self.bot.game.handle_played(ctx)
 
 
-    # Commande pour quitter la partie
+    #FIXME Commande pour quitter la partie
     @commands.command(name='partir')
     async def leave_poker(self, ctx):
         if self.bot.game.status!=GameStatus.RUNNING:

@@ -114,15 +114,12 @@ class PokerGame:
 
         if community_cards_count == 0:
             self.flop()
-            self.reset_current_player()
             return (f"Le flop a été révélé: {self.show_community_cards()}")
         elif community_cards_count == 3:
             self.turn()
-            self.reset_current_player()
             return (f"Le turn a été révélé: {self.show_community_cards()}")
         elif community_cards_count == 4:
             self.river()
-            self.reset_current_player()
             return (f"Le river a été révélé: {self.show_community_cards()}")
         else:
             return None
@@ -222,15 +219,16 @@ class PokerGame:
                 #FIXME update balance or chips ?
                 self.player_chips[player] += gain
                 if not isinstance(player, FakeMember):
-                    self._db.user_update_balance(player.id, gain)
+                    self._db.user_add_balance(player.id, gain)
 
     def reset_game(self):
-        self.players.clear()
+        #self.players.clear()
+        self.status = GameStatus.INIT
         self.folded_players.clear()
         self.pot = 0
         self.community_cards.clear()
         self.players_bets.clear()
-        self.player_chips.clear()
+        #self.player_chips.clear()
         self.deck = Deck()  # Crée un nouveau deck pour la prochaine partie
         self.game_id = random.randint(1000, 9999)  # Nouveau game_id pour la prochaine partie
         self.winners = []  # Liste vide de gagnants
@@ -268,7 +266,7 @@ class PokerGame:
         # on affecte le bet tour au bet du joueur (puis que c'est)
         self.players_bets[player] = self.bet_tour
 
-
+        self._compute_next_player()
 
     def fold(self, player):
         if player not in self.players:
@@ -281,7 +279,7 @@ class PokerGame:
             raise ValueError("Vous vous êtes déjà couché!")
 
         self.folded_players.append(player)
-
+        self._compute_next_player()
 
     def check(self, player):
         if player not in self.players:
@@ -301,11 +299,10 @@ class PokerGame:
             self.players_bets[player] = self.bet_tour
             self.player_chips[player] -= difference
 
+        self._compute_next_player()
         return difference
 
     async def handle_played(self, ctx):
-        self._compute_next_player()
-
         if self.current_player:
             await ctx.send(f"C'est à {self.current_player.name} de jouer")
             return
@@ -314,34 +311,56 @@ class PokerGame:
         ret = self.next_card()
         if ret:
             await ctx.send(ret)
+            self.reset_current_player()
+            await ctx.send(f"C'est à {self.current_player.name} de jouer")
         else :
             self.end_game()
             winners_text = ', '.join([winner.name for winner in self.winners])
             await ctx.send(f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.pot} jetons a été distribué.")
-
+            self.reset_game();
+            await ctx.send(f"Démarrez une nouvelle partie avec $start")
 
 
     def _compute_next_player(self):
         """Détermine le prochain joueur actif qui doit jouer, ou passe au tour suivant."""
 
-        current_index = self.players.index(self.current_player)
+        if not self.players:
+            self.current_player = None
+            return None  # Aucun joueur
+
+        # Si current_player est None, on prend le premier joueur non couché
+        if self.current_player is None:
+            self.current_player = self.get_first_active_player()
+            return self.current_player
+
         num_players = len(self.players)
+        current_index = self.players.index(self.current_player)
 
         for _ in range(num_players):  # Boucle circulaire
             current_index = (current_index + 1) % num_players
             next_player = self.players[current_index]
 
-            if next_player not in self.folded_players and self.players_bets.get(next_player, 0) != self.bet_tour:
-                self.current_player = next_player
-                return next_player  # Trouvé, on met à jour et on retourne
+            # Si bet_tour est 0, on ne prend en compte que les joueurs actifs
+            if self.bet_tour == 0:
+                if next_player not in self.folded_players:
+                    self.current_player = next_player
+                    return next_player
+            else:
+                if next_player not in self.folded_players and self.players_bets.get(next_player, 0) != self.bet_tour:
+                    self.current_player = next_player
+                    return next_player
 
         # Aucun joueur ne doit jouer, on passe au tour suivant
         self.current_player = None
+        return None
 
     def reset_current_player(self):
         """Retourne le premier joueur qui n'est pas couché."""
+        self.current_player = self.get_first_active_player()
+
+    def get_first_active_player(self):
+        """Retourne le premier joueur qui n'est pas couché."""
         for player in self.players:
             if player not in self.folded_players:
-                self.current_player = player
                 return player
-        return None  # Aucun joueur actif
+        return None
