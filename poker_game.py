@@ -3,7 +3,7 @@ from collections import Counter
 from enum import Enum
 
 from db_manager import DBManager
-
+MIN_PLAYERS=1
 
 # Define the classes for the poker game
 class Card:
@@ -56,7 +56,7 @@ class PokerGame:
     def can_start(self):
         if self.status==GameStatus.OFF or self.status==GameStatus.RUNNING:
             return False
-        return len(self.bot.game.players) >= 1
+        return len(self.bot.game.players) >= MIN_PLAYERS
 
     def add_player(self, player):
         if player not in self.players:
@@ -79,18 +79,21 @@ class PokerGame:
                 self.pot += bet
                 self.player_chips[player] -= bet
                 self.bets[player] = 0
+                #FIXME balance or chips
                 self._db.user_update_balance(player.id, -bet)  # Update the player's balance
 
     def next_card(self):
         self.collect_bets()
         self.bet_tour = 0
-        if len(self.community_cards) == 0:
+        community_cards_count = len(self.community_cards);
+
+        if community_cards_count == 0:
             self.flop()
             return (f"Le flop a été révélé: {self.show_community_cards()}")
-        elif len(self.community_cards) == 3:
+        elif community_cards_count == 3:
             self.turn()
             return (f"Le turn a été révélé: {self.show_community_cards()}")
-        elif len(self.community_cards) == 4:
+        elif community_cards_count == 4:
             self.river()
             return (f"Le river a été révélé: {self.show_community_cards()}")
         else:
@@ -119,6 +122,7 @@ class PokerGame:
         return self.bets.get(player, 0)
 
     def start_game(self):
+        self.status = GameStatus.RUNNING
         self.bet_tour = 20
         self.deal_cards()
         return self.show_community_cards(), self.show_player_hands()
@@ -161,21 +165,23 @@ class PokerGame:
     def determine_winner(self):
         hand_rankings = self.evaluate_hands()
         best_rank = None
-        winners = []
+        self.winners = []
         for player, rank in hand_rankings.items():
             if best_rank is None or rank > best_rank:
                 best_rank = rank
-                winners = [player]
+                self.winners = [player]
             elif rank == best_rank:
-                winners.append(player)
-        return winners
+                self.winners.append(player)
 
     def end_game(self):
-        winners = self.determine_winner()
-        gain = self.pot / len(winners)
-        for winner in winners:
-            self._db.user_update_balance(winner.id, gain)
-        self.winners = winners
+        self.status = GameStatus.ENDED
+        self.determine_winner()
+        if len(self.winners) > 0:
+            gain = self.pot / len(self.winners)
+            for winner in self.winners:
+                #FIXME update balance or chips ?
+                self._db.user_update_balance(winner.id, gain)
+
 
     def reset_game(self):
         self.players.clear()
