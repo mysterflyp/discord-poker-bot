@@ -3,6 +3,7 @@ from discord.ext import commands
 
 from db_manager import DBManager
 from poker_game import GameStatus
+from views.test_view import TestView
 
 
 class BotCommands(commands.Cog):
@@ -342,7 +343,8 @@ class BotCommands(commands.Cog):
             await ctx.send(ret)
         else :
             self.bot.game.end_game()
-            await ctx.send(f"Le jeu est terminé! Le gagnant est: {', '.join([winner.name for winner in self.bot.game.winners])}. Le pot de {bot.game.pot} jetons a été distribué.")
+            winners_text = ', '.join([winner.name for winner in self.bot.game.winners])
+            await ctx.send(f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.bot.game.pot} jetons a été distribué.")
             self.bot.game.reset_game()
             # FIXME END
             self.bot.game = None
@@ -367,6 +369,10 @@ class BotCommands(commands.Cog):
 
 
 
+    @commands.command(name="testview")
+    async def test_view(selfselft, ctx):
+        view = TestView
+        await ctx.send("Commencer le poker:", view=view)
 
 
 
