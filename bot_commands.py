@@ -324,10 +324,11 @@ class BotCommands(commands.Cog):
         if ctx.author not in self.bot.game.players:
             await ctx.send("Vous n'êtes pas dans cette partie!")
             return
+
         if len(self.bot.game.winners) > 0:
             await ctx.send("la partie est terminée!")
             return
-    
+
         # Vérifier si la mise du joueur est bien celle du maximum du tour, sinon l'appliquer
         playerbet = self.bot.game.bets.get(ctx.author, 0)
         if playerbet < self.bot.game.bet_tour:
@@ -337,7 +338,9 @@ class BotCommands(commands.Cog):
             await ctx.send(f"{ctx.author.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.bet_tour}.")
         else:
             return
-    
+
+        # self.bot.game.has_next_card()
+
         ret = self.bot.game.next_card()
         if ret:
             await ctx.send(ret)

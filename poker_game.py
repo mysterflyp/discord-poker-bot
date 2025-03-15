@@ -82,6 +82,9 @@ class PokerGame:
                 #FIXME balance or chips
                 self._db.user_update_balance(player.id, -bet)  # Update the player's balance
 
+    def has_next_card(self):
+        return len(self.community_cards) < 5
+
     def next_card(self):
         self.collect_bets()
         self.bet_tour = 0
