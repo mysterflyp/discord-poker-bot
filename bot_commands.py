@@ -222,7 +222,23 @@ class BotCommands(commands.Cog):
             await ctx.send(f"La partie peut maintenant commencer !")
             await ctx.send(f"Utilisez la commande $start pour démarrer")
 
-    
+    @commands.command(name="join_cpu")
+    async def join_cpu(self, ctx):
+        if self.bot.game.status!=GameStatus.INIT:
+            await ctx.send("Le poker ne peut etre rejoint que lors de la phase d'init!")
+            return
+
+        cpu_player = self.bot.game.create_cpu_player()
+        self.bot.game.add_player(cpu_player)
+        await ctx.send(f"{cpu_player.name} a rejoint la partie !")
+
+        # FIXME Check nb players
+        await ctx.send(f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie.")
+
+        if self.bot.game.can_start():
+            await ctx.send(f"La partie peut maintenant commencer !")
+            await ctx.send(f"Utilisez la commande $start pour démarrer")
+
     @commands.command(name="start")
     async def start(self, ctx):
         # FIXME Check start
@@ -268,7 +284,7 @@ class BotCommands(commands.Cog):
         amount_relative = amount + self.bot.game.bet_tour
     
         # Maintenant, à combien cela revient-il par rapport a son bet actuel
-        bet_relatif = amount_relative - self.bot.game.bets[ctx.author]
+        bet_relatif = amount_relative - self.bot.game.players_bets[ctx.author]
     
         # On verifie qu'il a assez
         # FIXME : ne pas utiliser les get_balance pais les game.player.chips
@@ -281,7 +297,7 @@ class BotCommands(commands.Cog):
         self.bot.game.bet_tour += amount_relative
     
         # on affecte le bet tour au bet du joueur (puis que c'est)
-        self.bot.game.bets[ctx.author] = self.bot.game.bet_tour
+        self.bot.game.players_bets[ctx.author] = self.bot.game.bet_tour
         await ctx.send(f"{ctx.author.name} a misé {amount} jetons.")
     
     # Commande pour se coucher
@@ -330,10 +346,10 @@ class BotCommands(commands.Cog):
             return
 
         # Vérifier si la mise du joueur est bien celle du maximum du tour, sinon l'appliquer
-        playerbet = self.bot.game.bets.get(ctx.author, 0)
+        playerbet = self.bot.game.players_bets.get(ctx.author, 0)
         if playerbet < self.bot.game.bet_tour:
             difference = self.bot.game.bet_tour - playerbet
-            self.bot.game.bets[ctx.author] = self.bot.game.bet_tour
+            self.bot.game.players_bets[ctx.author] = self.bot.game.bet_tour
             self.bot.game.player_chips[ctx.author] -= difference
             await ctx.send(f"{ctx.author.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.bet_tour}.")
         else:
@@ -360,7 +376,7 @@ class BotCommands(commands.Cog):
 
         await ctx.send(f"Mise actuelle du tour : {self.bot.game.bet_tour}")
         for player in self.bot.game.players:
-            await ctx.send(f" -{player.name}: {self.bot.game.bets[player]} jetons.")
+            await ctx.send(f" -{player.name}: {self.bot.game.players_bets[player]} jetons.")
     
     @commands.command(name='pot')
     async def get_pot(self, ctx):

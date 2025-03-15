@@ -1,6 +1,9 @@
 import random
 from collections import Counter
+from datetime import datetime
 from enum import Enum
+
+import discord
 
 from db_manager import DBManager
 MIN_PLAYERS=1
@@ -33,6 +36,23 @@ class GameStatus(Enum):
     RUNNING = 2
     ENDED = 3
 
+class FakeMember:
+    """Classe simulant un joueur CPU en imitant discord.Member."""
+
+    def __init__(self, bot, name: str, id: int):
+        self.bot = bot
+        self.name = name
+        self.id = id
+        self.display_name = name  # Pour correspondre à Member
+        self.mention = f"🤖 {name}"  # Simule la mention d'un joueur CPU
+        self.discriminator = f"{id % 9999:04d}"  # Simule un tag Discord aléatoire (0001-9999)
+        self.roles = [discord.Object(id=123456)]  # Simule une liste de rôles
+        self.joined_at = datetime.datetime.utcnow()  # Simule la date d'inscription
+
+
+def __repr__(self):
+        return f"<FakeMember name={self.name} id={self.id}>"
+
 class PokerGame:
     def __init__(self, bot):
         self.bot = bot
@@ -42,7 +62,7 @@ class PokerGame:
         self.deck = Deck()
         self.community_cards = []  # Community cards
         self.pot = 0  # The pot
-        self.bets = {}  # Dictionary to track bets of players
+        self.players_bets = {}  # Dictionary to track bets of players
         self.bet_tour = 0  # Current bet tour
         self.player_chips = {}  # Player's chips
         self.folded_players = []  # List of players who folded
@@ -61,26 +81,31 @@ class PokerGame:
     def add_player(self, player):
         if player not in self.players:
             self.players.append(player)
-            self._db.user_ensure_exist(player)
-            argent = self._db.user_get_balance(player.id)  # Get the player's balance from DB
-            self.player_chips[player] = argent
-            self.bets[player] = 0  # Initial bet of 0 for each player
+
+    def create_cpu_player(self):
+        """Ajoute un joueur CPU."""
+        num = len([p for p in self.players if isinstance(p, FakeMember)])
+        cpu_id = 9000 + num
+        cpu_player = FakeMember(self.bot, f"FakePlayer_{num}", cpu_id)
+        return cpu_player
 
     def deal_cards(self):
         self.player_hands = {player: [self.deck.draw(), self.deck.draw()] for player in self.players if player not in self.folded_players}
 
     def reset_bets(self):
-        self.bets = {player: 0 for player in self.players}
+        self.players_bets = {player: 0 for player in self.players}
 
     def collect_bets(self):
         # Collecting players' bets into the pot
-        for player, bet in self.bets.items():
+        for player, bet in self.players_bets.items():
             if player not in self.folded_players:
                 self.pot += bet
-                self.player_chips[player] -= bet
-                self.bets[player] = 0
                 #FIXME balance or chips
-                self._db.user_update_balance(player.id, -bet)  # Update the player's balance
+                self.player_chips[player] -= bet
+                if not isinstance(player, FakeMember):
+                    self._db.user_update_balance(player.id, -bet)  # Update the player's balance
+
+                self.players_bets[player] = 0
 
     def has_next_card(self):
         return len(self.community_cards) < 5
@@ -122,13 +147,25 @@ class PokerGame:
         return
 
     def get_player_bet(self, player):
-        return self.bets.get(player, 0)
+        return self.players_bets.get(player, 0)
 
     def start_game(self):
         self.status = GameStatus.RUNNING
         self.bet_tour = 20
+
+        self._init_players()
         self.deal_cards()
         return self.show_community_cards(), self.show_player_hands()
+
+    def _init_players(self):
+        for player in self.players:
+            if not isinstance(player, FakeMember):
+                self._db.user_ensure_exist(player)
+                self.player_chips[player] = self._db.user_get_balance(player.id)  # Get the player's balance from DB
+            else :
+                self.player_chips[player] = 500
+
+            self.players_bets[player] = 0  # Initial bet of 0 for each player
 
     def best_hand(self, hand):
         values = [card.value for card in hand]
@@ -181,17 +218,18 @@ class PokerGame:
         self.determine_winner()
         if len(self.winners) > 0:
             gain = self.pot / len(self.winners)
-            for winner in self.winners:
+            for player in self.winners:
                 #FIXME update balance or chips ?
-                self._db.user_update_balance(winner.id, gain)
-
+                self.player_chips[player] += gain
+                if not isinstance(player, FakeMember):
+                    self._db.user_update_balance(player.id, gain)
 
     def reset_game(self):
         self.players.clear()
         self.folded_players.clear()
         self.pot = 0
         self.community_cards.clear()
-        self.bets.clear()
+        self.players_bets.clear()
         self.player_chips.clear()
         self.deck = Deck()  # Crée un nouveau deck pour la prochaine partie
         self.game_id = random.randint(1000, 9999)  # Nouveau game_id pour la prochaine partie
