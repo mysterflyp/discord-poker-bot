@@ -8,6 +8,7 @@ from db_manager import DBManager
 # Define the classes for the poker game
 class Card:
     suits = ['♠', '♥', '♦', '♣']
+    #suits = ['♠️', '♥️', '♦️', '♣️']
     values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
     def __init__(self, suit, value):
@@ -27,14 +28,15 @@ class Deck:
 
 class GameStatus(Enum):
     """Enum pour représenter un statut."""
-    STOPPED = 0
-    TERMINE = 2
-    ANNULE = 3
+    OFF = 0
+    INIT = 1
+    RUNNING = 2
+    ENDED = 3
 
 class PokerGame:
     def __init__(self, bot):
         self.bot = bot
-        self.status:GameStatus = GameStatus.STOPPED
+        self.status:GameStatus = GameStatus.OFF
         self._db: DBManager | None = self.bot.get_cog("DBManager")
         self.players = []  # List of players
         self.deck = Deck()
@@ -48,11 +50,19 @@ class PokerGame:
         self.game_id = random.randint(1000, 9999)  # Unique game ID
         self.winners = []
 
+    def initialize(self):
+        self.status = GameStatus.INIT
+
+    def can_start(self):
+        if self.status==GameStatus.OFF or self.status==GameStatus.RUNNING:
+            return False
+        return len(self.bot.game.players) >= 1
+
     def add_player(self, player):
         if player not in self.players:
             self.players.append(player)
             self._db.user_ensure_exist(player)
-            argent = self._db.user_get_balance(player.name)  # Get the player's balance from DB
+            argent = self._db.user_get_balance(player.id)  # Get the player's balance from DB
             self.player_chips[player] = argent
             self.bets[player] = 0  # Initial bet of 0 for each player
 
@@ -72,7 +82,6 @@ class PokerGame:
                 self._db.user_update_balance(player.id, -bet)  # Update the player's balance
 
     def next_card(self):
-
         self.collect_bets()
         self.bet_tour = 0
         if len(self.community_cards) == 0:
@@ -86,7 +95,6 @@ class PokerGame:
             return (f"Le river a été révélé: {self.show_community_cards()}")
         else:
             return None
-
 
     def flop(self):
         self.community_cards.extend([self.deck.draw() for _ in range(3)])
@@ -111,8 +119,8 @@ class PokerGame:
         return self.bets.get(player, 0)
 
     def start_game(self):
-        self.deal_cards()
         self.bet_tour = 20
+        self.deal_cards()
         return self.show_community_cards(), self.show_player_hands()
 
     def best_hand(self, hand):
