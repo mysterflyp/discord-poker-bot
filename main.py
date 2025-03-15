@@ -20,15 +20,23 @@ class PokerBot(commands.Bot):
     """Bot personnalisé avec une instance de PokerGame."""
     def __init__(self, command_prefix, intents):
         super().__init__(command_prefix=command_prefix, intents=intents)
-        self.game = PokerGame(self)  # Création de l'instance de PokerGame
+        self.game = None  # Création de l'instance de PokerGame
 
+    async def on_ready(self):
+        """Vérifie si DBManager est chargé avant d'initialiser PokerGame."""
+        print(f"✅ {self.user} est en ligne !")
+
+        db_cog = self.get_cog("DBManager")
+        if db_cog:
+            print("🎲 DBManager détecté, initialisation de PokerGame...")
+            self.game = PokerGame(self)
+        else:
+            print("⚠️ DBManager n'est pas chargé ! PokerGame ne sera pas initialisé.")
 
 bot = PokerBot(command_prefix="$", intents=intents)
 client = discord.Client(intents=discord.Intents.all())
 
-@bot.event
-async def on_ready():
-    print(f"Connecté en tant que {bot.user}")
+
 
 @bot.event
 async def on_command_error(ctx, error):

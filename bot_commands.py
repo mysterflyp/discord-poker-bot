@@ -201,7 +201,7 @@ class BotCommands(commands.Cog):
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")
 
-    
+
     @commands.command(name="join_poker")
     async def join_poker(self, ctx):
         if self.bot.game.status!=GameStatus.INIT:
@@ -211,7 +211,7 @@ class BotCommands(commands.Cog):
         if ctx.author in self.bot.game.players:
             await ctx.send(f"{ctx.author.name}, vous avez déjà rejoint la partie !")
             return
-    
+
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la partie !")
 
@@ -272,39 +272,19 @@ class BotCommands(commands.Cog):
         if self.bot.game.status!=GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
-    
-        if ctx.author not in self.bot.game.players:
-            await ctx.send("Vous n'êtes pas dans cette partie!")
+
+        #FIXME : Demo only
+        player = self.get_author_or_cpu_if_current(ctx)
+        try:
+            self.bot.game.bet(player, amount)
+        except ValueError as e:
+            await ctx.send(f"{e}")
             return
-    
-        if ctx.author in self.bot.game.folded_players:
-            await ctx.send("Vous vous êtes déjà couché!")
-            return
-    
-        if amount <= 0:
-            await ctx.send("La mise doit être supérieure à zéro.")
-            return
-    
-        # Le montant relatif c'est "coller" + la relance
-        amount_relative = amount + self.bot.game.bet_tour
-    
-        # Maintenant, à combien cela revient-il par rapport a son bet actuel
-        bet_relatif = amount_relative - self.bot.game.players_bets[ctx.author]
-    
-        # On verifie qu'il a assez
-        # FIXME : ne pas utiliser les get_balance pais les game.player.chips
-        current_chips = self._db.user_get_balance(ctx.author.id)
-        if current_chips < bet_relatif:
-            await ctx.send(f"Vous n'avez pas assez de jetons. Vous avez {current_chips} jetons.")
-            return
-        #Mettre un timer de 20secondes qui dans le cas ou le joueur n'a pas misé, il se couche et le tour passe au joueur suivant
-        # on ajoute le montant relatif au bet tour
-        self.bot.game.bet_tour += amount_relative
-    
-        # on affecte le bet tour au bet du joueur (puis que c'est)
-        self.bot.game.players_bets[ctx.author] = self.bot.game.bet_tour
-        await ctx.send(f"{ctx.author.name} a misé {amount} jetons.")
-    
+
+        await ctx.send(f"{player.name} a misé {amount} jetons.")
+        await self.bot.game.handle_played(ctx)
+
+
     # Commande pour se coucher
     @commands.command(name='coucher')
     async def fold(self, ctx):
@@ -312,67 +292,66 @@ class BotCommands(commands.Cog):
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
-        if ctx.author not in self.bot.game.players:
-            await ctx.send("Vous n'êtes pas dans cette partie!")
+        #FIXME : Demo only
+        player = self.get_author_or_cpu_if_current(ctx)
+
+        try:
+            self.bot.game.fold(player)
+        except ValueError as e:
+            await ctx.send(f"{e}")
             return
-    
-        self.bot.game.folded_players.append(ctx.author)
-        await ctx.send(f"{ctx.author.name} s'est couché.")
-    
-    
+
+        await ctx.send(f"{player.name} s'est couché.")
+        await self.bot.game.handle_played(ctx)
+
+
     # Commande pour quitter la partie
     @commands.command(name='partir')
     async def leave_poker(self, ctx):
         if self.bot.game.status!=GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
-    
+
         if ctx.author in self.bot.game.players:
             self.bot.game.players.remove(ctx.author)
             self.bot.game.player_chips[ctx.author] = 0  # Réinitialiser les crédits
             await ctx.send(f"{ctx.author.name} a quitté la partie.")
         else:
             await ctx.send("Vous n'êtes pas dans cette partie!")
-    
-    
+
+
     # Commande pour passer à la phase suivante (flop, turn, river)
     @commands.command(name='check')
     async def check(self, ctx):
+
         if self.bot.game.status!=GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
-        if ctx.author not in self.bot.game.players:
-            await ctx.send("Vous n'êtes pas dans cette partie!")
+        #FIXME : Demo only
+        player = self.get_author_or_cpu_if_current(ctx)
+
+        try:
+            difference = self.bot.game.check(player)
+            if difference != 0:
+                await ctx.send(f"{player.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.bet_tour}.")
+            else:
+                await ctx.send(f"{player.name} a suivi.")
+        except ValueError as e:
+            await ctx.send(f"{e}")
             return
 
-        if len(self.bot.game.winners) > 0:
-            await ctx.send("la partie est terminée!")
-            return
+        await self.bot.game.handle_played(ctx)
 
-        # Vérifier si la mise du joueur est bien celle du maximum du tour, sinon l'appliquer
-        playerbet = self.bot.game.players_bets.get(ctx.author, 0)
-        if playerbet < self.bot.game.bet_tour:
-            difference = self.bot.game.bet_tour - playerbet
-            self.bot.game.players_bets[ctx.author] = self.bot.game.bet_tour
-            self.bot.game.player_chips[ctx.author] -= difference
-            await ctx.send(f"{ctx.author.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.bet_tour}.")
-        else:
-            return
+    # FIXME : only for demo
+    def get_author_or_cpu_if_current(self, ctx):
+        player = ctx.author
+        expected_player = self.bot.game.current_player
+        if expected_player and isinstance(expected_player, FakeMember):
+            player = expected_player
+        return player
 
-        # self.bot.game.has_next_card()
 
-        ret = self.bot.game.next_card()
-        if ret:
-            await ctx.send(ret)
-        else :
-            self.bot.game.end_game()
-            winners_text = ', '.join([winner.name for winner in self.bot.game.winners])
-            await ctx.send(f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.bot.game.pot} jetons a été distribué.")
-            self.bot.game.reset_game()
-            # FIXME END
-            self.bot.game = None
-    
     @commands.command(name='mises')
     async def get_mises(self, ctx):
         if self.bot.game.status!=GameStatus.RUNNING:
@@ -382,7 +361,7 @@ class BotCommands(commands.Cog):
         await ctx.send(f"Mise actuelle du tour : {self.bot.game.bet_tour}")
         for player in self.bot.game.players:
             await ctx.send(f" -{player.name}: {self.bot.game.players_bets[player]} jetons.")
-    
+
     @commands.command(name='pot')
     async def get_pot(self, ctx):
         if self.bot.game.status!=GameStatus.RUNNING:
