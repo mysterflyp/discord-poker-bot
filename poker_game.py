@@ -59,13 +59,14 @@ class PokerGame:
         self.community_cards = []  # Community cards
         self.pot = 0  # The pot
         self.players_bets = {}  # Dictionary to track bets of players
-        self.bet_tour = 0  # Current bet tour
+        self.min_bet_tour = 0  # Current bet tour
         self.player_chips = {}  # Player's chips
         self.folded_players = []  # List of players who folded
         self.round_over = False  # End of round flag
         self.game_id = random.randint(1000, 9999)  # Unique game ID
         self.winners = []
         self.current_player = None
+        self.first_max_bet_player = None
 
     def initialize(self):
         self.status = GameStatus.INIT
@@ -109,7 +110,7 @@ class PokerGame:
 
     def next_card(self):
         self.collect_bets()
-        self.bet_tour = 0
+        self.min_bet_tour = 0 # min_bet_tour reset
         community_cards_count = len(self.community_cards);
 
         if community_cards_count == 0:
@@ -146,9 +147,12 @@ class PokerGame:
     def get_player_bet(self, player):
         return self.players_bets.get(player, 0)
 
+    def get_current_max_bet(self):
+        return max(self.players_bets.values(), default=0)
+
     def start_game(self):
         self.status = GameStatus.RUNNING
-        self.bet_tour = 20
+        self.min_bet_tour = 20
 
         self._init_players()
         self.deal_cards()
@@ -247,8 +251,10 @@ class PokerGame:
         if amount <= 0:
             raise ValueError("La mise doit être supérieure à zéro.")
 
+        min_bet = self.get_current_max_bet();
+
         # Le montant relatif c'est "coller" + la relance
-        amount_relative = amount + self.bet_tour
+        amount_relative = amount + min_bet
 
         # Maintenant, à combien cela revient-il par rapport a son bet actuel
         bet_relatif = amount_relative - self.players_bets[player]
@@ -261,12 +267,16 @@ class PokerGame:
 
         #Mettre un timer de 20secondes qui dans le cas ou le joueur n'a pas misé, il se couche et le tour passe au joueur suivant
         # on ajoute le montant relatif au bet tour
-        self.bet_tour += amount_relative
+        min_bet += amount_relative
 
         # on affecte le bet tour au bet du joueur (puis que c'est)
-        self.players_bets[player] = self.bet_tour
+        self.players_bets[player] = self.min_bet_tour
 
-        self._compute_next_player()
+        # Mettre à jour max_bet et le premier joueur ayant misé ce montant
+        max_bet = max(self.players_bets.values(), default=0)
+
+        if new_bet > max_bet:
+            self.first_max_bet_player = player  # Nouveau joueur de référence
 
     def fold(self, player):
         if player not in self.players:
@@ -279,7 +289,6 @@ class PokerGame:
             raise ValueError("Vous vous êtes déjà couché!")
 
         self.folded_players.append(player)
-        self._compute_next_player()
 
     def check(self, player):
         if player not in self.players:
@@ -294,15 +303,20 @@ class PokerGame:
         # Vérifier si la mise du joueur est bien celle du maximum du tour, sinon l'appliquer
         playerbet = self.players_bets.get(player, 0)
         difference = 0
-        if playerbet < self.bet_tour:
-            difference = self.bet_tour - playerbet
-            self.players_bets[player] = self.bet_tour
+
+        # Compute the current min bet : min_bet_tour or current max
+        min_bet = max(self.min_bet_tour, self.get_current_max_bet());
+
+        if playerbet < min_bet:
+            difference = min_bet - playerbet
+            self.players_bets[player] = min_bet
             self.player_chips[player] -= difference
 
-        self._compute_next_player()
         return difference
 
     async def handle_played(self, ctx):
+        self._compute_next_player()
+
         if self.current_player:
             await ctx.send(f"C'est à {self.current_player.name} de jouer")
             return
@@ -322,7 +336,7 @@ class PokerGame:
 
 
     def _compute_next_player(self):
-        """Détermine le prochain joueur actif qui doit jouer, ou passe au tour suivant."""
+        """Détermine le prochain joueur actif qui doit jouer ou termine le tour."""
 
         if not self.players:
             self.current_player = None
@@ -340,15 +354,16 @@ class PokerGame:
             current_index = (current_index + 1) % num_players
             next_player = self.players[current_index]
 
-            # Si bet_tour est 0, on ne prend en compte que les joueurs actifs
-            if self.bet_tour == 0:
-                if next_player not in self.folded_players:
+            if next_player not in self.folded_players:
+                # Si ce joueur doit encore miser, on l'assigne comme current_player
+                if self.players_bets.get(next_player, 0) < max(self.players_bets.values(), default=0):
                     self.current_player = next_player
                     return next_player
-            else:
-                if next_player not in self.folded_players and self.players_bets.get(next_player, 0) != self.bet_tour:
-                    self.current_player = next_player
-                    return next_player
+
+                # Si on revient à first_max_bet_player, on termine le tour
+                if next_player == self.first_max_bet_player:
+                    self.current_player = None
+                    return None  # Tour terminé
 
         # Aucun joueur ne doit jouer, on passe au tour suivant
         self.current_player = None

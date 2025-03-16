@@ -338,7 +338,7 @@ class BotCommands(commands.Cog):
         try:
             difference = self.bot.game.check(player)
             if difference != 0:
-                await ctx.send(f"{player.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.bet_tour}.")
+                await ctx.send(f"{player.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.get_player_bet(player)}.")
             else:
                 await ctx.send(f"{player.name} a suivi.")
         except ValueError as e:
@@ -362,9 +362,11 @@ class BotCommands(commands.Cog):
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
-        await ctx.send(f"Mise actuelle du tour : {self.bot.game.bet_tour}")
+        await ctx.send(f"Mises du tour")
+        await ctx.send(f" MinTour : {self.bot.game.min_bet_tour}")
+        await ctx.send(f" Max : {self.bot.game.get_current_max_bet()}")
         for player in self.bot.game.players:
-            await ctx.send(f" -{player.name}: {self.bot.game.players_bets[player]} jetons.")
+            await ctx.send(f" -{player.name}: {self.bot.game.get_player_bet(player)} jetons.")
 
     @commands.command(name='pot')
     async def get_pot(self, ctx):
