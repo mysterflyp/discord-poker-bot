@@ -20,7 +20,7 @@ class PokerBot(commands.Bot):
     """Bot personnalisé avec une instance de PokerGame."""
     def __init__(self, command_prefix, intents):
         super().__init__(command_prefix=command_prefix, intents=intents)
-        self.game = None  # Création de l'instance de PokerGame
+        self.game = None
 
     async def on_ready(self):
         """Vérifie si DBManager est chargé avant d'initialiser PokerGame."""
