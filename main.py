@@ -1,10 +1,12 @@
 import os
-import traceback
-
 import discord
-import asyncio
 from discord.ext import commands, tasks
-
+from discord.ui import View, Select, Button
+import asyncio
+import sqlite3
+import aiosqlite
+import json
+import random
 from poker_game import PokerGame
 
 # Récuperation du token du bot depuis les variables d'environement
@@ -35,8 +37,6 @@ class PokerBot(commands.Bot):
 
 bot = PokerBot(command_prefix="$", intents=intents)
 client = discord.Client(intents=discord.Intents.all())
-
-
 
 @bot.event
 async def on_command_error(ctx, error):
