@@ -17,7 +17,8 @@ class BotCommands(commands.Cog):
         """Méthode appelée automatiquement lors du chargement du Cog."""
         self._db = self.bot.get_cog("DBManager")
         if self._db is None:
-            raise RuntimeError("❌ Erreur : DBManager n'a pas été chargé avant BotCommands !")
+            raise RuntimeError(
+                "❌ Erreur : DBManager n'a pas été chargé avant BotCommands !")
 
     @commands.command(name="solde")
     async def solde(self, ctx, member: discord.Member = None):
@@ -67,7 +68,8 @@ class BotCommands(commands.Cog):
         new_author_balance = self._db.user_add_balance(ctx.author.id, -amount)
 
         # Ajouter au target
-        new_target_balance = self._db.user_add_balance(target_member.id, amount)
+        new_target_balance = self._db.user_add_balance(target_member.id,
+                                                       amount)
         await ctx.send(
             f"{ctx.author.mention} a donné {amount} jetons à {target_member.mention}. Nouveaux soldes : {ctx.author.mention}={new_author_balance} jetons, {target_member.mention}={new_target_balance} jetons"
         )
@@ -92,11 +94,13 @@ class BotCommands(commands.Cog):
         )
 
         # Gestion des erreurs pour la commande de remise à zéro level
+
     # FIXME : Dans le else utiliser error.toStr....
     @crediter.error
     async def crediter_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("Tu n'as pas la permission d'utiliser cette commande.")
+            await ctx.send(
+                "Tu n'as pas la permission d'utiliser cette commande.")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(
                 "Tu dois spécifier un membre pour lui assigner du credit.")
@@ -110,19 +114,23 @@ class BotCommands(commands.Cog):
     async def reset_niveau(self, ctx, member: discord.Member):
         new_niveau = self._db.user_reset_niveau(member.id)
         if new_niveau == 0:
-            await ctx.send(f"L'expérience de {member.mention} a été remise à zéro.")
+            await ctx.send(
+                f"L'expérience de {member.mention} a été remise à zéro.")
         else:
-            await ctx.send(f"{member.mention} n'a pas d'expérience enregistrée.")
+            await ctx.send(
+                f"{member.mention} n'a pas d'expérience enregistrée.")
 
     # Gestion des erreurs pour la commande de remise à zéro level
     # FIXME : Dans le else utiliser error.toStr....
     @reset_niveau.error
     async def reset_niveau_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("Tu n'as pas la permission d'utiliser cette commande.")
+            await ctx.send(
+                "Tu n'as pas la permission d'utiliser cette commande.")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(
-                "Tu dois spécifier un membre pour réinitialiser son expérience.")
+                "Tu dois spécifier un membre pour réinitialiser son expérience."
+            )
         else:
             await ctx.send("Une erreur est survenue.")
 
@@ -141,17 +149,18 @@ class BotCommands(commands.Cog):
     @reset_balance.error
     async def reset_balance_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send("Tu n'as pas la permission d'utiliser cette commande.")
+            await ctx.send(
+                "Tu n'as pas la permission d'utiliser cette commande.")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(
                 "Tu dois spécifier un membre pour réinitialiser son argent.")
         else:
             await ctx.send("Une erreur est survenue.")
 
-
     # Commande pour bannir un utilisateur par ID
     @commands.command(name="ban")
-    async def ban_id(self, ctx,
+    async def ban_id(self,
+                     ctx,
                      user_id: int,
                      *,
                      reason: str = "Aucune raison spécifiée"):
@@ -187,36 +196,38 @@ class BotCommands(commands.Cog):
         embed.set_thumbnail(url=user.avatar.url)
         await ctx.send(embed=embed)
 
-
     # POKER Commands
     @commands.command(name='start_poker')
     async def start_poker(self, ctx):
-        if self.bot.game.status!=GameStatus.OFF:
+        if self.bot.game.status != GameStatus.OFF:
             await ctx.send("Le poker ne peut etre demarré qu'une seule fois!")
             return
 
-        self.bot.game.initialize()
+        self.bot.game.initialize(ctx)
         await ctx.send(f"Poker initialisé")
 
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")
 
-
     @commands.command(name="join_poker")
     async def join_poker(self, ctx):
-        if self.bot.game.status!=GameStatus.INIT:
-            await ctx.send("Le poker ne peut etre rejoint que lors de la phase d'init!")
+        if self.bot.game.status != GameStatus.INIT:
+            await ctx.send(
+                "Le poker ne peut etre rejoint que lors de la phase d'init!")
             return
 
         if ctx.author in self.bot.game.players:
-            await ctx.send(f"{ctx.author.name}, vous avez déjà rejoint la partie !")
+            await ctx.send(
+                f"{ctx.author.name}, vous avez déjà rejoint la partie !")
             return
 
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la partie !")
 
         # FIXME Check nb players
-        await ctx.send(f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie.")
+        await ctx.send(
+            f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie."
+        )
 
         if self.bot.game.can_start():
             await ctx.send(f"La partie peut maintenant commencer !")
@@ -224,8 +235,9 @@ class BotCommands(commands.Cog):
 
     @commands.command(name="join_cpu")
     async def join_cpu(self, ctx):
-        if self.bot.game.status!=GameStatus.INIT:
-            await ctx.send("Le poker ne peut etre rejoint que lors de la phase d'init!")
+        if self.bot.game.status != GameStatus.INIT:
+            await ctx.send(
+                "Le poker ne peut etre rejoint que lors de la phase d'init!")
             return
 
         cpu_player = self.bot.game.create_cpu_player()
@@ -233,7 +245,9 @@ class BotCommands(commands.Cog):
         await ctx.send(f"{cpu_player.name} a rejoint la partie !")
 
         # FIXME Check nb players
-        await ctx.send(f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie.")
+        await ctx.send(
+            f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie."
+        )
 
         if self.bot.game.can_start():
             await ctx.send(f"La partie peut maintenant commencer !")
@@ -243,20 +257,26 @@ class BotCommands(commands.Cog):
     async def start(self, ctx):
         # FIXME Check start
         if not self.bot.game.can_start():
-            await ctx.send(f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie.")
+            await ctx.send(
+                f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie."
+            )
             await ctx.send(f"La partie ne peut pas etre démarée !")
             return
 
         first_player = self.bot.game.players[0]
         if ctx.author != first_player:  # Only the first player can start
-            await ctx.send(f"Seul le premier joueur ({first_player.name}) peut démarrer la partie.")
+            await ctx.send(
+                f"Seul le premier joueur ({first_player.name}) peut démarrer la partie."
+            )
             return
 
         await ctx.send("La partie commence maintenant !")
 
         self.bot.game.start_game()
         self.bot.game.start_betting_round()
-        await ctx.send ("La phase de mise commence! Chaque joueur peut miser, suivre, relancer ou se coucher")
+        await ctx.send(
+            "La phase de mise commence! Chaque joueur peut miser, suivre, relancer ou se coucher"
+        )
 
         player_hands = self.bot.game.get_players_hands()
         for player in self.bot.game.players:
@@ -266,14 +286,13 @@ class BotCommands(commands.Cog):
             else:
                 await ctx.send(f"Main de {player.name}: {hand}")
 
-        await ctx.send(f"C'est à {self.bot.game.current_player.name} de jouer")
-
+        await self.bot.game.display_player_window(self.bot.game.current_player)
 
 
     # Commande pour miser, suivre, relancer
     @commands.command(name='miser')
     async def bet(self, ctx, amount: int):
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
@@ -288,11 +307,10 @@ class BotCommands(commands.Cog):
         await ctx.send(f"{player.name} a misé {amount} jetons.")
         await self.bot.game.handle_played(ctx)
 
-
     # Commande pour se coucher
     @commands.command(name='coucher')
     async def fold(self, ctx):
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
@@ -308,27 +326,26 @@ class BotCommands(commands.Cog):
         await ctx.send(f"{player.name} s'est couché.")
         await self.bot.game.handle_played(ctx)
 
-
     #FIXME Commande pour quitter la partie
     @commands.command(name='partir')
     async def leave_poker(self, ctx):
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
         if ctx.author in self.bot.game.players:
             self.bot.game.players.remove(ctx.author)
-            self.bot.game.player_chips[ctx.author] = 0  # Réinitialiser les crédits
+            self.bot.game.player_chips[
+                ctx.author] = 0  # Réinitialiser les crédits
             await ctx.send(f"{ctx.author.name} a quitté la partie.")
         else:
             await ctx.send("Vous n'êtes pas dans cette partie!")
-
 
     # Commande pour passer à la phase suivante (flop, turn, river)
     @commands.command(name='check')
     async def check(self, ctx):
 
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
@@ -338,11 +355,13 @@ class BotCommands(commands.Cog):
         try:
             difference = self.bot.game.check(player)
             if difference != 0:
-                await ctx.send(f"{player.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.get_player_bet(player)}.")
+                await ctx.send(
+                    f"{player.name} a complété sa mise avec {difference} jetons, mise totale: {self.bot.game.get_player_bet(player)}."
+                )
             else:
                 await ctx.send(f"{player.name} a suivi.")
         except ValueError as e:
-            await ctx.send(f"{e}")
+            await ctx.send(f"error:{e}")
             return
 
         await self.bot.game.handle_played(ctx)
@@ -355,10 +374,9 @@ class BotCommands(commands.Cog):
             player = expected_player
         return player
 
-
     @commands.command(name='mises')
     async def get_mises(self, ctx):
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
@@ -366,27 +384,24 @@ class BotCommands(commands.Cog):
         await ctx.send(f" MinTour : {self.bot.game.min_bet_tour}")
         await ctx.send(f" Max : {self.bot.game.get_current_max_bet()}")
         for player in self.bot.game.players:
-            await ctx.send(f" -{player.name}: {self.bot.game.get_player_bet(player)} jetons.")
+            await ctx.send(
+                f" -{player.name}: {self.bot.game.get_player_bet(player)} jetons."
+            )
 
     @commands.command(name='pot')
     async def get_pot(self, ctx):
-        if self.bot.game.status!=GameStatus.RUNNING:
+        if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
 
         await ctx.send(f"Contenu du pot : {self.bot.game.pot} jetons")
 
-
-
     @commands.command(name="testview")
-    async def test_view(selfselft, ctx):
-        view = TestView
-        await ctx.send("Commencer le poker:", view=view)
-
-
-
-
-
+    async def test_view(self, ctx):
+        if self.bot.game.status != GameStatus.RUNNING:
+            await ctx.send("Aucun jeu n'est en cours!")
+            return
+        view = TestView(ctx,self.bot.game,ctx.author)
 
     # FIXME Revoir help
     @commands.command()

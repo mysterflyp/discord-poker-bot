@@ -4,9 +4,12 @@ from datetime import datetime
 from enum import Enum
 
 import discord
+from discord.ui import View, Select
 
 from db_manager import DBManager
-MIN_PLAYERS=1
+
+MIN_PLAYERS = 1
+
 
 # Define the classes for the poker game
 class Card:
@@ -21,13 +24,18 @@ class Card:
     def __repr__(self):
         return f"{self.value}{self.suit}"
 
+
 class Deck:
+
     def __init__(self):
-        self.cards = [Card(suit, value) for suit in Card.suits for value in Card.values]
+        self.cards = [
+            Card(suit, value) for suit in Card.suits for value in Card.values
+        ]
         random.shuffle(self.cards)
 
     def draw(self):
         return self.cards.pop()
+
 
 class GameStatus(Enum):
     """Enum pour représenter un statut."""
@@ -35,6 +43,7 @@ class GameStatus(Enum):
     INIT = 1
     RUNNING = 2
     ENDED = 3
+
 
 class FakeMember:
     """Classe simulant un joueur CPU en imitant discord.Member."""
@@ -46,13 +55,16 @@ class FakeMember:
         self.display_name = name  # Pour correspondre à Member
         self.mention = f"🤖 {name}"  # Simule la mention d'un joueur CPU
 
+
 def __repr__(self):
-        return f"<FakeMember name={self.name} id={self.id}>"
+    return f"<FakeMember name={self.name} id={self.id}>"
+
 
 class PokerGame:
+
     def __init__(self, bot):
         self.bot = bot
-        self.status:GameStatus = GameStatus.OFF
+        self.status: GameStatus = GameStatus.OFF
         self._db: DBManager | None = self.bot.get_cog("DBManager")
         self.players = []  # List of players
         self.deck = Deck()
@@ -68,11 +80,12 @@ class PokerGame:
         self.current_player = None
         self.first_max_bet_player = None
 
-    def initialize(self):
+    def initialize(self, ctx):
         self.status = GameStatus.INIT
+        self.ctx = ctx
 
     def can_start(self):
-        if self.status==GameStatus.OFF or self.status==GameStatus.RUNNING:
+        if self.status == GameStatus.OFF or self.status == GameStatus.RUNNING:
             return False
         return len(self.bot.game.players) >= MIN_PLAYERS
 
@@ -88,7 +101,10 @@ class PokerGame:
         return cpu_player
 
     def deal_cards(self):
-        self.player_hands = {player: [self.deck.draw(), self.deck.draw()] for player in self.players if player not in self.folded_players}
+        self.player_hands = {
+            player: [self.deck.draw(), self.deck.draw()]
+            for player in self.players if player not in self.folded_players
+        }
 
     def reset_bets(self):
         self.players_bets = {player: 0 for player in self.players}
@@ -101,7 +117,8 @@ class PokerGame:
                 #FIXME balance or chips
                 self.player_chips[player] -= bet
                 if not isinstance(player, FakeMember):
-                    self._db.user_add_balance(player.id, -bet)  # Update the player's balance
+                    self._db.user_add_balance(
+                        player.id, -bet)  # Update the player's balance
 
                 self.players_bets[player] = 0
 
@@ -110,9 +127,8 @@ class PokerGame:
 
     def next_card(self):
         self.collect_bets()
-        self.min_bet_tour = 0 # min_bet_tour reset
-        community_cards_count = len(self.community_cards);
-
+        self.min_bet_tour = 0  # min_bet_tour reset
+        community_cards_count = len(self.community_cards)
         if community_cards_count == 0:
             self.flop()
             return (f"Le flop a été révélé: {self.show_community_cards()}")
@@ -138,7 +154,10 @@ class PokerGame:
         return ' '.join(str(card) for card in self.community_cards)
 
     def get_players_hands(self):
-        return {player: ' '.join(str(card) for card in cards) for player, cards in self.player_hands.items()}
+        return {
+            player: ' '.join(str(card) for card in cards)
+            for player, cards in self.player_hands.items()
+        }
 
     def start_betting_round(self):
         self.reset_bets()
@@ -158,12 +177,14 @@ class PokerGame:
         self.deal_cards()
         self.reset_current_player()
 
+    
     def _init_players(self):
         for player in self.players:
             if not isinstance(player, FakeMember):
                 self._db.user_ensure_exist(player)
-                self.player_chips[player] = self._db.user_get_balance(player.id)  # Get the player's balance from DB
-            else :
+                self.player_chips[player] = self._db.user_get_balance(
+                    player.id)  # Get the player's balance from DB
+            else:
                 self.player_chips[player] = 500
 
             self.players_bets[player] = 0  # Initial bet of 0 for each player
@@ -172,12 +193,15 @@ class PokerGame:
         values = [card.value for card in hand]
         suits = [card.suit for card in hand]
         counts = Counter(values)
-        sorted_counts = sorted(counts.items(), key=lambda x: (-x[1], -Card.values.index(x[0])))
+        sorted_counts = sorted(counts.items(),
+                               key=lambda x: (-x[1], -Card.values.index(x[0])))
 
         is_flush = len(set(suits)) == 1
         is_straight = False
         sorted_values = sorted([Card.values.index(v) for v in values])
-        if sorted_values == list(range(sorted_values[0], sorted_values[0] + len(sorted_values))):
+        if sorted_values == list(
+                range(sorted_values[0],
+                      sorted_values[0] + len(sorted_values))):
             is_straight = True
 
         if is_straight and is_flush:
@@ -199,8 +223,14 @@ class PokerGame:
         return "Hauteur"
 
     def evaluate_hands(self):
-        player_hands = {player: self.player_hands[player] + self.community_cards for player in self.players if player not in self.folded_players}
-        hand_rankings = {player: self.best_hand(hand) for player, hand in player_hands.items()}
+        player_hands = {
+            player: self.player_hands[player] + self.community_cards
+            for player in self.players if player not in self.folded_players
+        }
+        hand_rankings = {
+            player: self.best_hand(hand)
+            for player, hand in player_hands.items()
+        }
         return hand_rankings
 
     def determine_winner(self):
@@ -234,7 +264,8 @@ class PokerGame:
         self.players_bets.clear()
         #self.player_chips.clear()
         self.deck = Deck()  # Crée un nouveau deck pour la prochaine partie
-        self.game_id = random.randint(1000, 9999)  # Nouveau game_id pour la prochaine partie
+        self.game_id = random.randint(
+            1000, 9999)  # Nouveau game_id pour la prochaine partie
         self.winners = []  # Liste vide de gagnants
         self.round_over = False  # Réinitialiser l'état de la partie
 
@@ -251,7 +282,7 @@ class PokerGame:
         if amount <= 0:
             raise ValueError("La mise doit être supérieure à zéro.")
 
-        min_bet = self.get_current_max_bet();
+        min_bet = self.get_current_max_bet()
 
         # Le montant relatif c'est "coller" + la relance
         amount_relative = amount + min_bet
@@ -263,7 +294,9 @@ class PokerGame:
         # FIXME : ne pas utiliser les get_balance pais les game.player.chips
         current_chips = self.player_chips[player]
         if current_chips < bet_relatif:
-            raise ValueError(f"Vous n'avez pas assez de jetons. Vous avez {current_chips} jetons.")
+            raise ValueError(
+                f"Vous n'avez pas assez de jetons. Vous avez {current_chips} jetons."
+            )
 
         #Mettre un timer de 20secondes qui dans le cas ou le joueur n'a pas misé, il se couche et le tour passe au joueur suivant
         # on ajoute le montant relatif au bet tour
@@ -307,7 +340,7 @@ class PokerGame:
         difference = 0
 
         # Compute the current min bet : min_bet_tour or current max
-        min_bet = max(self.min_bet_tour, self.get_current_max_bet());
+        min_bet = max(self.min_bet_tour, self.get_current_max_bet())
 
         if playerbet < min_bet:
             difference = min_bet - playerbet
@@ -319,30 +352,46 @@ class PokerGame:
 
         return difference
 
+    async def display_player_window(self, player):
+        view = PlayerView(self.ctx, self, player)
+        await self.ctx.send(f"C'est à {player.name} de jouer", view=view)
+
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
-
         if self.current_player:
-            await ctx.send(f"C'est à {self.current_player.name} de jouer")
+            await self.display_player_window(self.current_player)
             return
 
         await ctx.send(f"Le tour est terminé ")
 
-
-    # No next player, reveal next card
+        # No next player, reveal next card
         ret = self.next_card()
         if ret:
             await ctx.send(ret)
             self.reset_current_player()
-            await ctx.send(f"C'est à {self.current_player.name} de jouer")
-        else :
+            await self.display_player_window(self.current_player)
+        else:
             self.end_game()
             winners_text = ', '.join([winner.name for winner in self.winners])
-            await ctx.send(f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.pot} jetons a été distribué.")
-            self.reset_game();
+            await ctx.send(
+                f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.pot} jetons a été distribué."
+            )
+            self.reset_game()
             await ctx.send(f"Démarrez une nouvelle partie avec $start")
 
+    def _get_author_or_cpu_if_current(self):
+        player = self.ctx.author
+        expected_player = self.current_player
+        if expected_player and isinstance(expected_player, FakeMember):
+            player = expected_player
+        return player
 
+    def _get_human_player(self, player):
+        if isinstance(player, FakeMember):
+            return self.get_first_active_player()
+        return player
+        
+    
     async def _compute_next_player(self, ctx):
         """Détermine le prochain joueur actif qui doit jouer ou termine le tour."""
 
@@ -357,7 +406,11 @@ class PokerGame:
             return self.current_player
 
         num_players = len(self.players)
-        min_bet = max(self.min_bet_tour, self.get_current_max_bet());
+        num_unfold_players = num_players - len(self.folded_players)
+        if num_unfold_players == 1:
+            return None
+        
+        min_bet = max(self.min_bet_tour, self.get_current_max_bet())
 
         current_index = self.players.index(self.current_player)
 
@@ -368,17 +421,14 @@ class PokerGame:
             if next_player not in self.folded_players:
                 # Si on revient à first_max_bet_player, on termine le tour
                 if next_player == self.first_max_bet_player:
-                    await ctx.send(f"on a atteind le first_max_bet_player {self.first_max_bet_player.name}, return none")
                     self.current_player = None
                     return None  # Tour terminé
 
                 # Si ce joueur doit encore miser, on l'assigne comme current_player
                 player_bet = self.players_bets.get(next_player, 0)
-                if (player_bet < min_bet) or (min_bet==0):
-                    await ctx.send(f"Trouvé un nouveau next player qui n'a pas encore assez misé {next_player.name}")
+                if (player_bet < min_bet) or (min_bet == 0):
                     self.current_player = next_player
                     return next_player
-
 
         # Aucun joueur ne doit jouer, on passe au tour suivant
         await ctx.send(f"fin de la fonction _compute_next_player return none")
@@ -390,10 +440,73 @@ class PokerGame:
         self.current_player = self.get_first_active_player()
         self.first_max_bet_player = self.current_player
 
-
     def get_first_active_player(self):
         """Retourne le premier joueur qui n'est pas couché."""
         for player in self.players:
             if player not in self.folded_players:
                 return player
         return None
+
+
+class PlayerView(discord.ui.View):
+
+    def __init__(self, ctx, game, player):
+        super().__init__()
+        self.ctx = ctx
+        self.game = game
+        self.player = player
+
+    @discord.ui.button(label="Suivre", style=discord.ButtonStyle.success)
+    async def follow_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Vérifier que seul le joueur en cours peut interagir
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return  # Empêche l'exécution du reste du code
+        # Désactiver le bouton après clic
+        self.clear_items()
+        await interaction.message.edit(view=self)
+
+        try:
+            difference = self.game.check(self.player)
+            if difference != 0:
+                await self.ctx.send(
+                    f"{self.player.name} a complété sa mise avec {difference} jetons, mise totale: {self.game.get_player_bet(self.player)}."
+                )
+            else:
+                await self.ctx.send(f"{self.player.name} a suivi.")
+        except ValueError as e:
+            await self.ctx.send(f"Erreur: {e}")
+
+        await self.game.handle_played(self.ctx)
+
+
+
+    @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
+    async def retry_callback(self, interaction: discord.Interaction,
+                             button: discord.ui.Button):
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return  # Empêche l'exécution du reste du code
+            
+        await interaction.response.send_message(
+            f"{self.player.name} as relancé de 🔄")
+        self.clear_items()
+        await interaction.message.edit(view=self)
+
+    @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
+    async def fold_callback(self, interaction: discord.Interaction,
+                            button: discord.ui.Button):
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return  # Empêche l'exécution du reste du code
+            # Désactiver le bouton après clic
+        self.clear_items()
+        await interaction.message.edit(view=self)
+            
+        try:
+            self.game.fold(self.folded.player)
+            await self.ctx.send(f"{self.player.name} s'est couché.")
+        except ValueError as e:
+            await self.ctx.send(f"{e}")
+
+        await self.game.handle_played(self.ctx)
