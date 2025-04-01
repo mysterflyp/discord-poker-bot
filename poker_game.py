@@ -122,33 +122,26 @@ class PokerGame:
 
                 self.players_bets[player] = 0
 
-    def has_next_card(self):
-        return len(self.community_cards) < 5
-
     def next_card(self):
         self.collect_bets()
         self.min_bet_tour = 0  # min_bet_tour reset
         community_cards_count = len(self.community_cards)
+
+        # si il n'y a plus qu'un joueur actif (non couché), pas la peine de continuer
+        if (len(self.players) - len(self.folded_players)) == 1:
+            return None
+        
         if community_cards_count == 0:
-            self.flop()
+            self.community_cards.extend([self.deck.draw() for _ in range(3)])
             return (f"Le flop a été révélé: {self.show_community_cards()}")
         elif community_cards_count == 3:
-            self.turn()
+            self.community_cards.append(self.deck.draw())
             return (f"Le turn a été révélé: {self.show_community_cards()}")
         elif community_cards_count == 4:
-            self.river()
+            self.community_cards.append(self.deck.draw())
             return (f"Le river a été révélé: {self.show_community_cards()}")
         else:
             return None
-
-    def flop(self):
-        self.community_cards.extend([self.deck.draw() for _ in range(3)])
-
-    def turn(self):
-        self.community_cards.append(self.deck.draw())
-
-    def river(self):
-        self.community_cards.append(self.deck.draw())
 
     def show_community_cards(self):
         return ' '.join(str(card) for card in self.community_cards)
@@ -322,7 +315,6 @@ class PokerGame:
             raise ValueError("Vous vous êtes déjà couché!")
 
         self.folded_players.append(player)
-        self.current_player = None
 
         # FIXME : update first_max_ber_player ??
 
@@ -359,6 +351,7 @@ class PokerGame:
 
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
+        
         if self.current_player:
             await self.display_player_window(self.current_player)
             return
@@ -398,21 +391,25 @@ class PokerGame:
 
         if not self.players:
             self.current_player = None
-            return None  # Aucun joueur
+            return  # Aucun joueur
 
         # Si current_player est None, on prend le premier joueur non couché
         if self.current_player is None:
             await ctx.send(f"pas de current player, recup first actif ")
             self.current_player = self.get_first_active_player()
-            return self.current_player
+            return
             
-
+        # si tout les joueurs sont couchés, alors il n'y a plus de next player a jouer
         num_players = len(self.players)
         num_fold_players = len(self.folded_players)
         num_unfold_players = num_players - num_fold_players
         if num_unfold_players == 1:
-            return None
-            return None
+            await ctx.send(f"in compute next blayer : break : palayers={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
+            self.current_player = None
+            return
+
+        
+    
         
         min_bet = max(self.min_bet_tour, self.get_current_max_bet())
 
@@ -426,18 +423,17 @@ class PokerGame:
                 # Si on revient à first_max_bet_player, on termine le tour
                 if next_player == self.first_max_bet_player:
                     self.current_player = None
-                    return None  # Tour terminé
+                    return  # Tour terminé
 
                 # Si ce joueur doit encore miser, on l'assigne comme current_player
                 player_bet = self.players_bets.get(next_player, 0)
                 if (player_bet < min_bet) or (min_bet == 0):
                     self.current_player = next_player
-                    return next_player
+                    return
 
         # Aucun joueur ne doit jouer, on passe au tour suivant
         await ctx.send(f"fin de la fonction _compute_next_player return none")
         self.current_player = None
-        return None
 
     def reset_current_player(self):
         """Retourne le premier joueur qui n'est pas couché."""
