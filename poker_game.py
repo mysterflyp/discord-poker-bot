@@ -395,7 +395,7 @@ class PokerGame:
 
         # Si current_player est None, on prend le premier joueur non couché
         if self.current_player is None:
-            await ctx.send(f"pas de current player, recup first actif ")
+            #await ctx.send(f"pas de current player, recup first actif ")
             self.current_player = self.get_first_active_player()
             return
             
@@ -404,7 +404,7 @@ class PokerGame:
         num_fold_players = len(self.folded_players)
         num_unfold_players = num_players - num_fold_players
         if num_unfold_players == 1:
-            await ctx.send(f"in compute next blayer : break : palayers={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
+            #await ctx.send(f"in compute next blayer : break : palayers={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
             self.current_player = None
             return
 
