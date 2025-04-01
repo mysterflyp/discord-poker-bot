@@ -65,7 +65,7 @@ class PokerGame:
     def __init__(self, bot):
         self.bot = bot
         self.status: GameStatus = GameStatus.OFF
-        self._db: DBManager | None = self.bot.get_cog("DBManager")
+        self._db: DBManager = self.bot.get_cog("DBManager")
         self.players = []  # List of players
         self.deck = Deck()
         self.community_cards = []  # Community cards
@@ -322,6 +322,7 @@ class PokerGame:
             raise ValueError("Vous vous êtes déjà couché!")
 
         self.folded_players.append(player)
+        self.current_player = None
 
         # FIXME : update first_max_ber_player ??
 
@@ -404,10 +405,13 @@ class PokerGame:
             await ctx.send(f"pas de current player, recup first actif ")
             self.current_player = self.get_first_active_player()
             return self.current_player
+            
 
         num_players = len(self.players)
-        num_unfold_players = num_players - len(self.folded_players)
+        num_fold_players = len(self.folded_players)
+        num_unfold_players = num_players - num_fold_players
         if num_unfold_players == 1:
+            return None
             return None
         
         min_bet = max(self.min_bet_tour, self.get_current_max_bet())
@@ -480,6 +484,26 @@ class PlayerView(discord.ui.View):
         await self.game.handle_played(self.ctx)
 
 
+    @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
+    async def fold_callback(self, interaction: discord.Interaction,
+                            button: discord.ui.Button):
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return
+        self.clear_items()
+        await interaction.message.edit(view=self)
+            
+        try:
+            self.game.fold(self.player)
+        except ValueError as e:
+            await self.ctx.send(f"{e}")
+            return
+            
+        await self.ctx.send(f"{self.player.name} s'est couché.")
+        await self.game.handle_played(self.ctx)
+
+    
+
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
     async def retry_callback(self, interaction: discord.Interaction,
@@ -487,26 +511,18 @@ class PlayerView(discord.ui.View):
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return  # Empêche l'exécution du reste du code
-            
+
         await interaction.response.send_message(
             f"{self.player.name} as relancé de 🔄")
         self.clear_items()
         await interaction.message.edit(view=self)
 
-    @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
-    async def fold_callback(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return  # Empêche l'exécution du reste du code
-            # Désactiver le bouton après clic
-        self.clear_items()
-        await interaction.message.edit(view=self)
-            
-        try:
-            self.game.fold(self.folded.player)
-            await self.ctx.send(f"{self.player.name} s'est couché.")
-        except ValueError as e:
-            await self.ctx.send(f"{e}")
 
-        await self.game.handle_played(self.ctx)
+
+
+
+
+
+
+
+
