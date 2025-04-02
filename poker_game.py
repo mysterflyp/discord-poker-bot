@@ -292,11 +292,9 @@ class PokerGame:
             )
 
         #Mettre un timer de 20secondes qui dans le cas ou le joueur n'a pas misé, il se couche et le tour passe au joueur suivant
-        # on ajoute le montant relatif au bet tour
-        min_bet += amount_relative
 
         # on affecte le bet tour au bet du joueur (puis que c'est)
-        self.players_bets[player] = self.min_bet_tour
+        self.players_bets[player] += bet_relatif
 
         # Mettre à jour max_bet et le premier joueur ayant misé ce montant
         max_bet = max(self.players_bets.values(), default=0)
@@ -408,9 +406,6 @@ class PokerGame:
             self.current_player = None
             return
 
-        
-    
-        
         min_bet = max(self.min_bet_tour, self.get_current_max_bet())
 
         current_index = self.players.index(self.current_player)
@@ -546,7 +541,7 @@ class BetSelect(discord.ui.Select):
         if amount == "all":
             amount = self.game.player_chips[self.player]  # All-in : tous les jetons disponibles
         else:
-            amount = int(amount)
+            amount = int(amount) 
 
         try:
             self.game.bet(self.player, amount)
