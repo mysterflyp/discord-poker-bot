@@ -515,6 +515,10 @@ class BetSelect(discord.ui.Select):
             discord.SelectOption(label="Relancer 10", value="10", description="Miser 10 jetons"),
             discord.SelectOption(label="Relancer 50", value="50", description="Miser 50 jetons"),
             discord.SelectOption(label="Relancer 100", value="100", description="Miser 100 jetons"),
+            discord.SelectOption(label="Relancer 200", value="200", description="Miser 200 jetons"),
+            discord.SelectOption(label="Relancer 300", value="300", description="Miser 300 jetons"),
+            discord.SelectOption(label="Relancer 400", value="400", description="Miser 400 jetons"),
+            discord.SelectOption(label="Relancer 500", value="500", description="Miser 500 jetons"),
             discord.SelectOption(label="All-in", value="all", description="Miser tous vos jetons"),
         ]
         super().__init__(placeholder="Choisissez votre mise...", options=options)
