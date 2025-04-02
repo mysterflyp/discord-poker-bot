@@ -501,21 +501,9 @@ class PlayerView(discord.ui.View):
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return  
-
-        # Afficher le sélecteur de mise
-        view = BetSelectView(self.game, self.player)
-        await interaction.response.send_message(f"{self.player.name}, choisissez votre mise :", view=view)
-
-
-class BetSelectView(discord.ui.View):
-    """Vue contenant un sélecteur pour choisir la relance."""
-
-    def __init__(self, game, player):
-        super().__init__()
-        self.game = game
-        self.player = player
+        self.clear_items()
         self.add_item(BetSelect(self.game, self.player))
-
+        await interaction.message.edit(view=self)
 
 class BetSelect(discord.ui.Select):
     """Sélecteur permettant au joueur de choisir un montant de relance."""
