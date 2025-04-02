@@ -3,8 +3,8 @@ from collections import Counter
 from datetime import datetime
 from enum import Enum
 
-import discord
-from discord.ui import View, Select
+import discord 
+from discord.ui import Button, View, Modal, TextInput
 
 from db_manager import DBManager
 
@@ -494,8 +494,6 @@ class PlayerView(discord.ui.View):
         await self.game.handle_played(self.ctx)
 
     
-
-
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
     async def retry_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
@@ -506,8 +504,6 @@ class PlayerView(discord.ui.View):
         await interaction.message.edit(view=self)
 
 class BetSelect(discord.ui.Select):
-    """Sélecteur permettant au joueur de choisir un montant de relance."""
-
     def __init__(self, game, player):
         self.game = game
         self.player = player
@@ -524,32 +520,19 @@ class BetSelect(discord.ui.Select):
         super().__init__(placeholder="Choisissez votre mise...", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+        if (interaction.user != self.player):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return  
 
-        # Récupérer le montant sélectionné
         amount = self.values[0]
         if amount == "all":
-            amount = self.game.player_chips[self.player]  # All-in : tous les jetons disponibles
+            amount = self.game.player_chips[self.player]
         else:
-            amount = int(amount) 
+            amount = int(amount)
 
         try:
             self.game.bet(self.player, amount)
             await interaction.response.edit_message(content=f"✅ {self.player.name} a relancé avec **{amount} jetons**.", view=None)
             await self.game.handle_played(self.game.ctx)
-
         except ValueError as e:
             await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
-
-
-
-
-
-
-
-
-
-
-

@@ -283,8 +283,7 @@ class BotCommands(commands.Cog):
             hand = player_hands.get(player, [])
             if not isinstance(player, FakeMember):
                 await player.send(f"Main de {player.name}: {hand}")
-            else:
-                await ctx.send(f"Main de {player.name}: {hand}")
+            
 
         await self.bot.game.display_player_window(self.bot.game.current_player)
 
