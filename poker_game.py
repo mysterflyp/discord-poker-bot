@@ -502,16 +502,60 @@ class PlayerView(discord.ui.View):
 
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
-    async def retry_callback(self, interaction: discord.Interaction,
-                             button: discord.ui.Button):
+    async def retry_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return  # Empêche l'exécution du reste du code
+            return  
 
-        await interaction.response.send_message(
-            f"{self.player.name} as relancé de 🔄")
-        self.clear_items()
-        await interaction.message.edit(view=self)
+        # Afficher le sélecteur de mise
+        view = BetSelectView(self.game, self.player)
+        await interaction.response.send_message(f"{self.player.name}, choisissez votre mise :", view=view)
+
+
+class BetSelectView(discord.ui.View):
+    """Vue contenant un sélecteur pour choisir la relance."""
+
+    def __init__(self, game, player):
+        super().__init__()
+        self.game = game
+        self.player = player
+        self.add_item(BetSelect(self.game, self.player))
+
+
+class BetSelect(discord.ui.Select):
+    """Sélecteur permettant au joueur de choisir un montant de relance."""
+
+    def __init__(self, game, player):
+        self.game = game
+        self.player = player
+        options = [
+            discord.SelectOption(label="Relancer 10", value="10", description="Miser 10 jetons"),
+            discord.SelectOption(label="Relancer 50", value="50", description="Miser 50 jetons"),
+            discord.SelectOption(label="Relancer 100", value="100", description="Miser 100 jetons"),
+            discord.SelectOption(label="All-in", value="all", description="Miser tous vos jetons"),
+        ]
+        super().__init__(placeholder="Choisissez votre mise...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return  
+
+        # Récupérer le montant sélectionné
+        amount = self.values[0]
+        if amount == "all":
+            amount = self.game.player_chips[self.player]  # All-in : tous les jetons disponibles
+        else:
+            amount = int(amount)
+
+        try:
+            self.game.bet(self.player, amount)
+            await interaction.response.edit_message(content=f"✅ {self.player.name} a relancé avec **{amount} jetons**.", view=None)
+            await self.game.handle_played(self.game.ctx)
+
+        except ValueError as e:
+            await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
+
 
 
 
