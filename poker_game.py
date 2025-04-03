@@ -6,6 +6,7 @@ from discord.ext import commands
 
 import discord 
 from discord.ui import Button, View, Modal, TextInput
+from discord.webhook.async_ import interaction_message_response_params
 
 from db_manager import DBManager
 
@@ -256,6 +257,7 @@ class PokerGame:
         self.pot = 0
         self.community_cards.clear()
         self.players_bets.clear()
+        self.player_chips.clear()
         #self.player_chips.clear()
         self.deck = Deck()  # Crée un nouveau deck pour la prochaine partie
         self.game_id = random.randint(
@@ -324,7 +326,7 @@ class PokerGame:
             raise ValueError("Ce n'est pas votre tour de jouer")
 
         if player in self.folded_players:
-            raise ValueError("Vous vous êtes déjà couché!")
+            raise ValueError("Vous vous êtes couché!")
 
         self.bot.game.players.remove(player)
     
@@ -378,7 +380,7 @@ class PokerGame:
             self.end_game()
             winners_text = ', '.join([winner.name for winner in self.winners])
             await ctx.send(
-                f"Le jeu est terminé! Le gagnant est: {winners_text}. Le pot de {self.pot} jetons a été distribué."
+                f"Le jeu est terminé! Le gagnant est: **{winners_text}**. Le pot de **{self.pot} jetons** a été distribué."
             )
             self.reset_game()
             await ctx.send(f"Démarrez une nouvelle partie avec $start")
@@ -454,6 +456,13 @@ class PokerGame:
                 return player
         return None
 
+    def view_cards(self, player):
+        """Affiche les cartes du joueur."""
+        player_cards = self.player_hands[player]
+        cards_str = ', '.join([str(card) for card in player_cards])
+        return f"{player.name} a les cartes : {cards_str}"
+        
+
 
 class PlayerView(discord.ui.View):
 
@@ -527,7 +536,26 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} as quitté la table.")
         await self.game.handle_played(self.ctx)
 
+###################################
 
+    @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.danger)
+    async def view_cards_callback(self, interaction: discord.Interaction,
+                            button: discord.ui.Button):
+        await interaction.response.defer()
+
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return
+        await interaction.message.edit(view=self)
+
+        try:
+            await interaction.response.send_message(self.game.view_cards(self.player))
+        except ValueError as e:
+            await self.ctx.send(f"{e}")
+            return
+
+        await self.ctx.send(f"{self.player.name} as quitté la table.")
+        await self.game.handle_played(self.ctx)
     
 ###################################
     
