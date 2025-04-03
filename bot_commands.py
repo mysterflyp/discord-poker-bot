@@ -274,17 +274,12 @@ class BotCommands(commands.Cog):
 
         self.bot.game.start_game()
         self.bot.game.start_betting_round()
-        await ctx.send(
-            "La phase de mise commence! Chaque joueur peut miser, suivre, relancer ou se coucher"
-        )
-
+        
         player_hands = self.bot.game.get_players_hands()
         for player in self.bot.game.players:
             hand = player_hands.get(player, [])
             if not isinstance(player, FakeMember):
                 await player.send(f"Main de {player.name}: {hand}")
-            
-
         await self.bot.game.display_player_window(self.bot.game.current_player)
 
 
@@ -394,13 +389,6 @@ class BotCommands(commands.Cog):
             return
 
         await ctx.send(f"Contenu du pot : {self.bot.game.pot} jetons")
-
-    @commands.command(name="testview")
-    async def test_view(self, ctx):
-        if self.bot.game.status != GameStatus.RUNNING:
-            await ctx.send("Aucun jeu n'est en cours!")
-            return
-        view = TestView(ctx,self.bot.game,ctx.author)
 
     # FIXME Revoir help
     @commands.command()

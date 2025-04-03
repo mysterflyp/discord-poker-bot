@@ -2,6 +2,7 @@ import random
 from collections import Counter
 from datetime import datetime
 from enum import Enum
+from discord.ext import commands
 
 import discord 
 from discord.ui import Button, View, Modal, TextInput
@@ -314,8 +315,19 @@ class PokerGame:
 
         self.folded_players.append(player)
 
-        # FIXME : update first_max_ber_player ??
+    
+    def leave_poker(self, player):
+        if player not in self.players:
+            raise ValueError("Vous n'êtes pas dans cette partie!")
 
+        if player != self.current_player:
+            raise ValueError("Ce n'est pas votre tour de jouer")
+
+        if player in self.folded_players:
+            raise ValueError("Vous vous êtes déjà couché!")
+
+        self.bot.game.players.remove(player)
+    
     def check(self, player):
         if player not in self.players:
             raise ValueError("Vous n'êtes pas dans cette partie!")
@@ -451,13 +463,13 @@ class PlayerView(discord.ui.View):
         self.game = game
         self.player = player
 
+###################################
+    
     @discord.ui.button(label="Suivre", style=discord.ButtonStyle.success)
     async def follow_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Vérifier que seul le joueur en cours peut interagir
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return  # Empêche l'exécution du reste du code
-        # Désactiver le bouton après clic
+            return
         self.clear_items()
         await interaction.message.edit(view=self)
 
@@ -474,7 +486,8 @@ class PlayerView(discord.ui.View):
 
         await self.game.handle_played(self.ctx)
 
-
+###################################
+    
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
     async def fold_callback(self, interaction: discord.Interaction,
                             button: discord.ui.Button):
@@ -493,15 +506,42 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
 
+###################################
+
+    @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
+    async def leave_poker_callback(self, interaction: discord.Interaction,
+                            button: discord.ui.Button):
+        await interaction.response.defer()
+
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return
+        await interaction.message.edit(view=self)
+
+        try:
+            self.game.players.remove(self.player)
+        except ValueError as e:
+            await self.ctx.send(f"{e}")
+            return
+
+        await self.ctx.send(f"{self.player.name} as quitté la table.")
+        await self.game.handle_played(self.ctx)
+
+
+    
+###################################
     
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
     async def retry_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return  
         self.clear_items()
         self.add_item(BetSelect(self.game, self.player))
         await interaction.message.edit(view=self)
+
+###################################
 
 class BetSelect(discord.ui.Select):
     def __init__(self, game, player):
@@ -536,3 +576,5 @@ class BetSelect(discord.ui.Select):
             await self.game.handle_played(self.game.ctx)
         except ValueError as e:
             await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
+
+    
