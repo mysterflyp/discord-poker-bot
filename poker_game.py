@@ -550,13 +550,11 @@ class PlayerView(discord.ui.View):
 
         try:
             player_hands = self.game.get_players_hands()
-            for player in self.game.players:
-                hand = player_hands.get(player, [])
-                if not isinstance(player, FakeMember):
-                    await player.send(f"Main de {player.name}: {hand}")
+            hand = player_hands.get(interaction.user, [])
+            await interaction.followup.send(f"Votre main: {hand}", ephemeral=True)
         except ValueError as e:
-            await self.ctx.send(f"{e}")
-            return None
+                await interaction.followup.send(f"{e}", ephemeral=True)
+        return None
 
 ###################################
     
