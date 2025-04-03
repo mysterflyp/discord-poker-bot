@@ -538,7 +538,7 @@ class PlayerView(discord.ui.View):
 
 ###################################
 
-    @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.secondary)
     async def view_cards_callback(self, interaction: discord.Interaction,
                             button: discord.ui.Button):
         await interaction.response.defer()
@@ -549,14 +549,15 @@ class PlayerView(discord.ui.View):
         await interaction.message.edit(view=self)
 
         try:
-            await interaction.response.send_message(self.game.view_cards(self.player))
+            player_hands = self.game.get_players_hands()
+            for player in self.game.players:
+                hand = player_hands.get(player, [])
+                if not isinstance(player, FakeMember):
+                    await player.send(f"Main de {player.name}: {hand}")
         except ValueError as e:
             await self.ctx.send(f"{e}")
-            return
+            return None
 
-        await self.ctx.send(f"{self.player.name} as quitté la table.")
-        await self.game.handle_played(self.ctx)
-    
 ###################################
     
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
