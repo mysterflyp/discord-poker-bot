@@ -389,6 +389,13 @@ class BotCommands(commands.Cog):
 
         await ctx.send(f"Contenu du pot : {self.bot.game.pot} jetons")
 
+    
+    @commands.command(name="reset_poker")
+    @commands.has_permissions(administrator=True)
+    async def reset_poker(self, ctx):
+        self.bot.game.reset_game()
+        await ctx.send("Le poker a été réinitialisé.")
+
     # FIXME Revoir help
     @commands.command()
     async def aide(self, ctx):
@@ -415,6 +422,7 @@ class BotCommands(commands.Cog):
         3. $reset_niveau @utilisateur - Réinitialise l'expérience de l'util
         4. $reset_balance @utilisateur - Réinitialise l'argent de l'utilisateur.
         5. $user_info @utilisateur - Affiche les informations sur un utilisateur.
+        6. $reset_poker - Réinitialise le poker.
     
         Utilisez ces commandes pour interagir avec le bot.
         """
