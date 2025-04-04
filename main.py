@@ -1,4 +1,6 @@
 import os
+import traceback
+
 import discord
 from discord.ext import commands, tasks
 from discord.ui import View, Select, Button
