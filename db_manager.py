@@ -148,7 +148,7 @@ class DBManager(commands.Cog):
                 result = cursor.fetchone()
 
                 if result:
-                    new_niveau = result[0] + amount
+                    new_niveau = 0
                     cursor.execute("UPDATE users SET niveau = ? WHERE user_id = ?", (new_niveau, user_id))
                     conn.commit()
                     return new_niveau
