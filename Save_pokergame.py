@@ -497,16 +497,6 @@ class PlayerView(discord.ui.View):
 
 ###################################
 
-    @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
-    async def custom_bet_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return
-
-        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
-
-###################################
-
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
     async def fold_callback(self, interaction: discord.Interaction,
                             button: discord.ui.Button):
@@ -568,38 +558,49 @@ class PlayerView(discord.ui.View):
 
 ###################################
 
-class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
-    amount = discord.ui.TextInput(
-        label="Entrez le montant à miser",
-        placeholder="Ex= 150",
-        min_length=1,
-        max_length=10,
-        required=True
-    )
+    @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
+    async def retry_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
 
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            return  
+        self.clear_items()
+        self.add_item(BetSelect(self.game, self.player))
+        await interaction.message.edit(view=self)
+
+###################################
+
+class BetSelect(discord.ui.Select):
     def __init__(self, game, player):
-        super().__init__()
         self.game = game
         self.player = player
+        options = [
+            discord.SelectOption(label="Relancer 10", value="10", description="Miser 10 jetons"),
+            discord.SelectOption(label="Relancer 50", value="50", description="Miser 50 jetons"),
+            discord.SelectOption(label="Relancer 100", value="100", description="Miser 100 jetons"),
+            discord.SelectOption(label="Relancer 200", value="200", description="Miser 200 jetons"),
+            discord.SelectOption(label="Relancer 300", value="300", description="Miser 300 jetons"),
+            discord.SelectOption(label="Relancer 400", value="400", description="Miser 400 jetons"),
+            discord.SelectOption(label="Relancer 500", value="500", description="Miser 500 jetons"),
+            discord.SelectOption(label="All-in", value="all", description="Miser tous vos jetons"),
+        ]
+        super().__init__(placeholder="Choisissez votre mise...", options=options)
 
-    async def on_submit(self, interaction: discord.Interaction):
-        if interaction.user != self.player:
+    async def callback(self, interaction: discord.Interaction):
+        if (interaction.user != self.player):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return
+            return  
+
+        amount = self.values[0]
+        if amount == "all":
+            amount = self.game.player_chips[self.player]
+        else:
+            amount = int(amount)
 
         try:
-            amount = int(self.amount.value)
-
-            if amount <= 0:
-                raise ValueError("Le montant doit être positif.")
-
-            if amount > self.game.player_chips[self.player]:
-                raise ValueError("Vous n'avez pas assez de jetons.")
-
             self.game.bet(self.player, amount)
-            await interaction.response.send_message(f"✅ {self.player.name} a misé **{amount} jetons**.", ephemeral=False)
+            await interaction.response.edit_message(content=f"✅ {self.player.name} a relancé avec **{amount} jetons**.", view=None)
             await self.game.handle_played(self.game.ctx)
         except ValueError as e:
             await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
-
 
