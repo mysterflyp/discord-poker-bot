@@ -492,11 +492,10 @@ class PlayerView(discord.ui.View):
                 await self.ctx.send(f"{self.player.name} a suivi.")
         except ValueError as e:
             await self.ctx.send(f"Erreur: {e}")
-
-        await self.game.handle_played(self.ctx)
+            await self.game.handle_played(self.ctx)
 
 ###################################
-    
+ 
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
     async def fold_callback(self, interaction: discord.Interaction,
                             button: discord.ui.Button):
@@ -512,30 +511,9 @@ class PlayerView(discord.ui.View):
             await self.ctx.send(f"{e}")
             return
             
-        await self.ctx.send(f"{self.player.name} s'est couché.")
+        await self.game.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
-
-###################################
-
-    @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
-    async def leave_poker_callback(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
-        await interaction.response.defer()
-
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return
-        await interaction.message.edit(view=self)
-
-        try:
-            self.game.players.remove(self.player)
-        except ValueError as e:
-            await self.ctx.send(f"{e}")
-            return
-
-        await self.ctx.send(f"{self.player.name} as quitté la table.")
-        await self.game.handle_played(self.ctx)
-
+    
 ###################################
 
     @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.secondary)
@@ -555,8 +533,8 @@ class PlayerView(discord.ui.View):
         except ValueError as e:
                 await interaction.followup.send(f"{e}", ephemeral=True)
         return None
-
-###################################
+        
+####################################
     
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.primary)
     async def retry_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -567,8 +545,8 @@ class PlayerView(discord.ui.View):
         self.clear_items()
         self.add_item(BetSelect(self.game, self.player))
         await interaction.message.edit(view=self)
-
-###################################
+        
+###########################################
 
 class BetSelect(discord.ui.Select):
     def __init__(self, game, player):
@@ -604,4 +582,4 @@ class BetSelect(discord.ui.Select):
         except ValueError as e:
             await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
 
-    
+
