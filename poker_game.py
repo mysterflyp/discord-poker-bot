@@ -10,7 +10,7 @@ from discord.webhook.async_ import interaction_message_response_params
 
 from db_manager import DBManager
 
-MIN_PLAYERS = 1
+MIN_PLAYERS = 2
 
 
 # Define the classes for the poker game
@@ -359,7 +359,19 @@ class PokerGame:
 
     async def display_player_window(self, player):
         view = PlayerView(self.ctx, self, player)
-        await self.ctx.send(f"C'est à {player.name} de jouer", view=view)
+
+        # Supprimer le message précédent s'il existe
+        if hasattr(self, 'current_view_message') and self.current_view_message:
+            try:
+                await self.current_view_message.delete()
+            except discord.NotFound:
+                pass  # Le message a déjà été supprimé
+
+        # Envoyer le nouveau message avec les boutons
+        self.current_view_message = await self.ctx.send(
+            f"C'est à {player.mention} de jouer !", view=view
+        )
+
 
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
@@ -494,6 +506,8 @@ class PlayerView(discord.ui.View):
             await self.ctx.send(f"Erreur: {e}")
 
         await self.game.handle_played(self.ctx)
+        self.game.next_turn()
+
 
 ###################################
 
@@ -504,6 +518,8 @@ class PlayerView(discord.ui.View):
             return
 
         await interaction.response.send_modal(CustomBetModal(self.game, self.player))
+        self.game.next_turn()
+
 
 ###################################
 
@@ -524,6 +540,8 @@ class PlayerView(discord.ui.View):
 
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
+        self.game.next_turn()
+
 
 ###################################
 
@@ -545,6 +563,8 @@ class PlayerView(discord.ui.View):
 
         await self.ctx.send(f"{self.player.name} as quitté la table.")
         await self.game.handle_played(self.ctx)
+        self.game.next_turn()
+
 
 ###################################
 
@@ -564,7 +584,7 @@ class PlayerView(discord.ui.View):
             await interaction.followup.send(f"Votre main: {hand}", ephemeral=True)
         except ValueError as e:
                 await interaction.followup.send(f"{e}", ephemeral=True)
-        return None
+        return
 
 ###################################
 
@@ -601,5 +621,15 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
             await self.game.handle_played(self.game.ctx)
         except ValueError as e:
             await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
+            self.game.next_turn()
+
+
+##################################
+    
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.player:
+            await interaction.response.send_message("Ce n'est pas ton tour !", ephemeral=True)
+            return False
+        return True
 
 
