@@ -3,14 +3,14 @@ from collections import Counter
 from datetime import datetime
 from enum import Enum
 from discord.ext import commands
-
-import discord 
+import discord
+import asyncio
 from discord.ui import Button, View, Modal, TextInput
 from discord.webhook.async_ import interaction_message_response_params
 
 from db_manager import DBManager
 
-MIN_PLAYERS = 2
+MIN_PLAYERS = 1
 
 
 # Define the classes for the poker game
@@ -81,7 +81,7 @@ class PokerGame:
         self.winners = []
         self.current_player = None
         self.first_max_bet_player = None
-
+    
     def initialize(self, ctx):
         self.status = GameStatus.INIT
         self.ctx = ctx
@@ -171,7 +171,6 @@ class PokerGame:
         self._init_players()
         self.deal_cards()
         self.reset_current_player()
-
 
     def _init_players(self):
         for player in self.players:
@@ -317,7 +316,6 @@ class PokerGame:
 
         self.folded_players.append(player)
 
-
     def leave_poker(self, player):
         if player not in self.players:
             raise ValueError("Vous n'êtes pas dans cette partie!")
@@ -358,7 +356,9 @@ class PokerGame:
         return difference
 
     async def display_player_window(self, player):
-        view = PlayerView(self.ctx, self, player)
+        player_view = PlayerView(self.ctx, self, player)
+        message = await self.ctx.send(f"c'est au tour de {player} :", view=player_view)
+        await player_view.start_countdown(message)
 
         # Supprimer le message précédent s'il existe
         if hasattr(self, 'current_view_message') and self.current_view_message:
@@ -369,9 +369,7 @@ class PokerGame:
 
         # Envoyer le nouveau message avec les boutons
         self.current_view_message = await self.ctx.send(
-            f"C'est à {player.mention} de jouer !", view=view
-        )
-
+            f"C'est à {player.mention} de jouer !", view=player_view)
 
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
@@ -408,7 +406,6 @@ class PokerGame:
         if isinstance(player, FakeMember):
             return self.get_first_active_player()
         return player
-
 
     async def _compute_next_player(self, ctx):
         """Détermine le prochain joueur actif qui doit jouer ou termine le tour."""
@@ -475,7 +472,6 @@ class PokerGame:
         return f"{player.name} a les cartes : {cards_str}"
 
 
-
 class PlayerView(discord.ui.View):
 
     def __init__(self, ctx, game, player):
@@ -483,12 +479,18 @@ class PlayerView(discord.ui.View):
         self.ctx = ctx
         self.game = game
         self.player = player
-
+        self.countdown_button = discord.ui.Button(label="Décompte", style=discord.ButtonStyle.blurple, disabled=True)
+        self.countdown_button.callback = self.countdown_callback
+        self.add_item(self.countdown_button)
+        self._countdown_task = None
+        self.running = True
+        
 ###################################
 
     @discord.ui.button(label="Suivre", style=discord.ButtonStyle.success)
     async def follow_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+        if (interaction.user
+                != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
         self.clear_items()
@@ -507,26 +509,26 @@ class PlayerView(discord.ui.View):
 
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-
-
+        
 ###################################
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
     async def custom_bet_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+        if (interaction.user
+                != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
 
-        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
+        await interaction.response.send_modal(
+            CustomBetModal(self.game, self.player))
         self.game.next_turn()
-
-
+        
 ###################################
 
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
-    async def fold_callback(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+    async def fold_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if (interaction.user
+                != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
         self.clear_items()
@@ -541,16 +543,15 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-
-
+        
 ###################################
 
     @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
-    async def leave_poker_callback(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
+    async def leave_poker_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
 
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+        if (interaction.user
+                != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
         await interaction.message.edit(view=self)
@@ -564,16 +565,15 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} as quitté la table.")
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-
-
+    
 ###################################
 
     @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.secondary)
-    async def view_cards_callback(self, interaction: discord.Interaction,
-                            button: discord.ui.Button):
+    async def view_cards_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
 
-        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+        if (interaction.user
+                != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
         await interaction.message.edit(view=self)
@@ -581,21 +581,81 @@ class PlayerView(discord.ui.View):
         try:
             player_hands = self.game.get_players_hands()
             hand = player_hands.get(interaction.user, [])
-            await interaction.followup.send(f"Votre main: {hand}", ephemeral=True)
+            await interaction.followup.send(f"Votre main: {hand}",
+                                            ephemeral=True)
         except ValueError as e:
-                await interaction.followup.send(f"{e}", ephemeral=True)
+            await interaction.followup.send(f"{e}", ephemeral=True)
         return
 
 ###################################
 
+    async def countdown_callback(self, interaction: discord.Interaction):
+        """Quand un bouton est cliqué, réinitialise le compteur."""
+        if not self.running:
+            return  # Si le jeu est terminé ou qu'il n'y a plus de joueurs, on ignore l'interaction.
+        # Réinitialiser le décompte pour le joueur suivant
+        await self.reset_countdown(interaction.message)
+
+    async def reset_countdown(self, message: discord.Message):
+        if self._countdown_task:
+            self.running = False  # Flag pour stopper l'ancien compteur
+            self._countdown_task.cancel()
+            try:
+                await self._countdown_task
+            except asyncio.CancelledError:
+                pass  # Attendre l'annulation propre
+
+        self._countdown_task = asyncio.create_task(self.start_countdown(message))
+
+    
+    async def start_countdown(self, message: discord.Message):
+        self.running = True  # On s'assure que le décompte est actif
+        try:
+            for i in range(5, 0, -1):
+                if not self.running or not self.game.players:
+                    # On stoppe proprement si plus de joueurs ou si on a forcé l'arrêt
+                    return
+
+                self.countdown_button.label = f"Décompte : {i}s"
+                await message.edit(view=self)
+                await asyncio.sleep(1)
+
+            # Fin du décompte (temps écoulé)
+            if not self.game.players:
+                await self.ctx.send("Le jeu est terminé, il n'y a plus de joueurs.")
+                return
+
+            try:
+                self.game.fold(self.player)
+            except ValueError as e:
+                await self.ctx.send(f"{e}")
+                return
+
+            await self.ctx.send(f"{self.player.name} s'est couché.")
+            await self.game.handle_played(self.ctx)
+            self.game.next_turn()
+
+        except asyncio.CancelledError:
+            # Si on annule la tâche (via reset ou fin de jeu), on sort proprement
+            return
+        
+    async def stop_countdown(self):
+        self.running = False
+        if self._countdown_task:
+            self._countdown_task.cancel()
+            try:
+                await self._countdown_task
+            except asyncio.CancelledError:
+                pass
+
+###################################
+
 class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
-    amount = discord.ui.TextInput(
-        label="Entrez le montant à miser",
-        placeholder="Ex= 150",
-        min_length=1,
-        max_length=10,
-        required=True
-    )
+    amount = discord.ui.TextInput(label="Entrez le montant à miser",
+                                  placeholder="Ex= 150",
+                                  min_length=1,
+                                  max_length=10,
+                                  required=True)
 
     def __init__(self, game, player):
         super().__init__()
@@ -617,19 +677,28 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
                 raise ValueError("Vous n'avez pas assez de jetons.")
 
             self.game.bet(self.player, amount)
-            await interaction.response.send_message(f"✅ {self.player.name} a misé **{amount} jetons**.", ephemeral=False)
+            await interaction.response.send_message(
+                f"✅ {self.player.name} a misé **{amount} jetons**.",
+                ephemeral=False)
             await self.game.handle_played(self.game.ctx)
         except ValueError as e:
-            await interaction.response.send_message(f"Erreur: {e}", ephemeral=True)
+            await interaction.response.send_message(f"Erreur: {e}",
+                                                    ephemeral=True)
             self.game.next_turn()
 
 
 ##################################
-    
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+
+    async def interaction_check(self,
+                                interaction: discord.Interaction) -> bool:
         if interaction.user != self.player:
-            await interaction.response.send_message("Ce n'est pas ton tour !", ephemeral=True)
+            await interaction.response.send_message("Ce n'est pas ton tour !",
+                                                    ephemeral=True)
             return False
         return True
-
-
+                    
+                        
+                                               
+                
+                    
+                   

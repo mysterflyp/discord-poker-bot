@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from db_manager import DBManager
-from poker_game import GameStatus, FakeMember
+from poker_game import GameStatus, FakeMember, PlayerView
 from views.test_view import TestView
 
 
@@ -437,6 +437,9 @@ class BotCommands(commands.Cog):
     async def hello(self, ctx):
         """Répond avec un message de bienvenue."""
         await ctx.send(f"Salut {ctx.author.mention} ! 😊")
+
+
+
 
 
 # Fonction pour ajouter les commandes au bot
