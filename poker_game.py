@@ -357,20 +357,9 @@ class PokerGame:
 
     async def display_player_window(self, player):
         player_view = PlayerView(self.ctx, self, player)
-        message = await self.ctx.send(f"c'est au tour de {player} :", view=player_view)
-        await player_view.start_countdown(message)
-
-        # Supprimer le message précédent s'il existe
-        if hasattr(self, 'current_view_message') and self.current_view_message:
-            try:
-                await self.current_view_message.delete()
-            except discord.NotFound:
-                pass  # Le message a déjà été supprimé
-
-        # Envoyer le nouveau message avec les boutons
-        self.current_view_message = await self.ctx.send(
-            f"C'est à {player.mention} de jouer !", view=player_view)
-
+        message = await self.ctx.send(f"c'est au tour de {player.name} :", view=player_view)
+        player_view.start_countdown(message)
+        
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
 
@@ -480,7 +469,7 @@ class PlayerView(discord.ui.View):
         self.game = game
         self.player = player
         self.countdown_button = discord.ui.Button(label="Décompte", style=discord.ButtonStyle.blurple, disabled=True)
-        self.countdown_button.callback = self.countdown_callback
+        #self.countdown_button.callback = self.countdown_callback
         self.add_item(self.countdown_button)
         self._countdown_task = None
         self.running = True
@@ -497,6 +486,7 @@ class PlayerView(discord.ui.View):
         await interaction.message.edit(view=self)
 
         try:
+            await self.stop_countdown()
             difference = self.game.check(self.player)
             if difference != 0:
                 await self.ctx.send(
@@ -535,6 +525,7 @@ class PlayerView(discord.ui.View):
         await interaction.message.edit(view=self)
 
         try:
+            await self.stop_countdown()
             self.game.fold(self.player)
         except ValueError as e:
             await self.ctx.send(f"{e}")
@@ -557,6 +548,7 @@ class PlayerView(discord.ui.View):
         await interaction.message.edit(view=self)
 
         try:
+            await self.stop_countdown()
             self.game.players.remove(self.player)
         except ValueError as e:
             await self.ctx.send(f"{e}")
@@ -589,42 +581,18 @@ class PlayerView(discord.ui.View):
 
 ###################################
 
-    async def countdown_callback(self, interaction: discord.Interaction):
-        """Quand un bouton est cliqué, réinitialise le compteur."""
-        if not self.running:
-            return  # Si le jeu est terminé ou qu'il n'y a plus de joueurs, on ignore l'interaction.
-        # Réinitialiser le décompte pour le joueur suivant
-        await self.reset_countdown(interaction.message)
-
-    async def reset_countdown(self, message: discord.Message):
-        if self._countdown_task:
-            self.running = False  # Flag pour stopper l'ancien compteur
-            self._countdown_task.cancel()
-            try:
-                await self._countdown_task
-            except asyncio.CancelledError:
-                pass  # Attendre l'annulation propre
-
-        self._countdown_task = asyncio.create_task(self.start_countdown(message))
+    def start_countdown(self, message: discord.Message):
+        self._countdown_task = asyncio.create_task(self.countdown_task(message))
 
     
-    async def start_countdown(self, message: discord.Message):
-        self.running = True  # On s'assure que le décompte est actif
+    async def countdown_task(self, message: discord.Message):
+        
         try:
-            for i in range(5, 0, -1):
-                if not self.running or not self.game.players:
-                    # On stoppe proprement si plus de joueurs ou si on a forcé l'arrêt
-                    return
-
+            for i in range(20, 0, -1):
                 self.countdown_button.label = f"Décompte : {i}s"
                 await message.edit(view=self)
                 await asyncio.sleep(1)
-
-            # Fin du décompte (temps écoulé)
-            if not self.game.players:
-                await self.ctx.send("Le jeu est terminé, il n'y a plus de joueurs.")
-                return
-
+            await self.ctx.send("Temps écoulé.")
             try:
                 self.game.fold(self.player)
             except ValueError as e:
@@ -634,13 +602,11 @@ class PlayerView(discord.ui.View):
             await self.ctx.send(f"{self.player.name} s'est couché.")
             await self.game.handle_played(self.ctx)
             self.game.next_turn()
-
         except asyncio.CancelledError:
             # Si on annule la tâche (via reset ou fin de jeu), on sort proprement
             return
         
     async def stop_countdown(self):
-        self.running = False
         if self._countdown_task:
             self._countdown_task.cancel()
             try:

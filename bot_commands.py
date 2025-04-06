@@ -202,13 +202,11 @@ class BotCommands(commands.Cog):
         if self.bot.game.status != GameStatus.OFF:
             await ctx.send("Le poker ne peut etre demarré qu'une seule fois!")
             return
-
         self.bot.game.initialize(ctx)
         await ctx.send(f"Poker initialisé")
-
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")
-
+        
     @commands.command(name="join_poker")
     async def join_poker(self, ctx):
         if self.bot.game.status != GameStatus.INIT:
@@ -261,13 +259,6 @@ class BotCommands(commands.Cog):
                 f"Il y a actuellement {len(self.bot.game.players)} joueur(s) dans la partie."
             )
             await ctx.send(f"La partie ne peut pas etre démarée !")
-            return
-
-        first_player = self.bot.game.players[0]
-        if ctx.author != first_player:  # Only the first player can start
-            await ctx.send(
-                f"Seul le premier joueur ({first_player.name}) peut démarrer la partie."
-            )
             return
 
         await ctx.send("La partie commence maintenant !")
@@ -325,7 +316,7 @@ class BotCommands(commands.Cog):
         if self.bot.game.status != GameStatus.RUNNING:
             await ctx.send("Aucun jeu n'est en cours!")
             return
-
+        player = self.get_author_or_cpu_if_current(ctx)
         if ctx.author in self.bot.game.players:
             self.bot.game.players.remove(ctx.author)
             self.bot.game.player_chips[
