@@ -10,7 +10,7 @@ from discord.webhook.async_ import interaction_message_response_params
 
 from db_manager import DBManager
 
-MIN_PLAYERS = 1
+MIN_PLAYERS = 2
 
 
 # Define the classes for the poker game
