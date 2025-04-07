@@ -480,9 +480,11 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(label="Suivre", style=discord.ButtonStyle.success)
     async def follow_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         if (interaction.user
                 != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            await interaction.response.defer()
             return
         self.clear_items()
         await interaction.message.edit(view=self)
@@ -506,6 +508,7 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
     async def custom_bet_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         if (interaction.user
                 != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
@@ -519,9 +522,11 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
     async def fold_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         if (interaction.user
                 != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+            
             return
         self.clear_items()
         await interaction.message.edit(view=self)
