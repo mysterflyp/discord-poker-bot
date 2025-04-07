@@ -199,22 +199,22 @@ class PokerGame:
             is_straight = True
 
         if is_straight and is_flush:
-            return "Quinte flush"
+            return (f"Quinte flush")
         if sorted_counts[0][1] == 4:
-            return "Carré"
+            return (f"Carré")
         if sorted_counts[0][1] == 3 and sorted_counts[1][1] == 2:
-            return "Full"
+            return (f"Full")
         if is_flush:
-            return "Couleur"
+            return (f"Couleur")
         if is_straight:
-            return "Quinte"
+            return (f"Quinte")
         if sorted_counts[0][1] == 3:
-            return "Brelan"
+            return (f"Brelan")
         if sorted_counts[0][1] == 2 and sorted_counts[1][1] == 2:
-            return "Double paire"
+            return (f"Double paire")
         if sorted_counts[0][1] == 2:
-            return "Paire"
-        return "Hauteur"
+            return (f"Paire")
+        return (f"Hauteur")
 
     def evaluate_hands(self):
         player_hands = {
@@ -231,12 +231,16 @@ class PokerGame:
         hand_rankings = self.evaluate_hands()
         best_rank = None
         self.winners = []
+        self.winning_hand_type = ""
+
         for player, rank in hand_rankings.items():
             if best_rank is None or rank > best_rank:
                 best_rank = rank
                 self.winners = [player]
+                self.winning_hand_type = rank
             elif rank == best_rank:
                 self.winners.append(player)
+
 
     def end_game(self):
         self.status = GameStatus.ENDED
@@ -257,7 +261,6 @@ class PokerGame:
         self.community_cards.clear()
         self.players_bets.clear()
         self.player_chips.clear()
-        #self.player_chips.clear()
         self.deck = Deck()  # Crée un nouveau deck pour la prochaine partie
         self.game_id = random.randint(
             1000, 9999)  # Nouveau game_id pour la prochaine partie
@@ -379,7 +382,7 @@ class PokerGame:
             self.end_game()
             winners_text = ', '.join([winner.name for winner in self.winners])
             await ctx.send(
-                f"Le jeu est terminé! Le gagnant est: **{winners_text}**. Le pot de **{self.pot} jetons** a été distribué."
+                f"Le jeu est terminé! Le gagnant est: **{winners_text}** avec une **{self.winning_hand_type}**. Le pot de **{self.pot} jetons** a été distribué."
             )
             self.reset_game()
             await ctx.send(f"Démarrez une nouvelle partie avec $start")
@@ -414,7 +417,7 @@ class PokerGame:
         num_fold_players = len(self.folded_players)
         num_unfold_players = num_players - num_fold_players
         if num_unfold_players == 1:
-            #await ctx.send(f"in compute next blayer : break : palayers={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
+            #await ctx.send(f"in compute next player : break : players={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
             self.current_player = None
             return
 
@@ -603,7 +606,6 @@ class PlayerView(discord.ui.View):
             await self.game.handle_played(self.ctx)
             self.game.next_turn()
         except asyncio.CancelledError:
-            # Si on annule la tâche (via reset ou fin de jeu), on sort proprement
             return
         
     async def stop_countdown(self):
