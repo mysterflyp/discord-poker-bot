@@ -80,7 +80,7 @@ class PokerGame:
         self.winners = []
         self.current_player = None
         self.first_max_bet_player = None
-    
+
     def initialize(self, ctx):
         self.status = GameStatus.INIT
         self.ctx = ctx
@@ -361,7 +361,11 @@ class PokerGame:
         player_view = PlayerView(self.ctx, self, player)
         message = await self.ctx.send(f"c'est au tour de {player.name} :", view=player_view)
         player_view.start_countdown(message)
-        
+
+    async def display_entry_window(self, ctx):
+        Joinpoker_view = JoinPokerView(self.ctx, self)
+        message = await ctx.send("Cliquez sur rejoindre pour participer !", view=Joinpoker_view)
+
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
 
@@ -462,6 +466,48 @@ class PokerGame:
         cards_str = ', '.join([str(card) for card in player_cards])
         return f"{player.name} a les cartes : {cards_str}"
 
+class JoinPokerView(discord.ui.View):
+    def __init__(self, ctx, game):
+        super().__init__()
+        self.ctx = ctx
+        self.game = game
+
+    @discord.ui.button(label="Rejoindre", style=discord.ButtonStyle.green)
+    async def join_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        #await self.ctx.send("vous avez rejoint la partie !")
+        await interaction.response.defer()
+        if interaction.user in self.game.players:
+            await interaction.response.send_message("Vous avez déjà rejoint la partie !", ephemeral=False)
+            return
+        self.game.add_player(interaction.user)
+        await interaction.response.send_message(f"{interaction.user.name} a rejoint la partie !", ephemeral=False)
+        if self.game.can_start():
+            await interaction.response.send_message(f"La partie peut maintenant commencer !", ephemeral=False)
+
+    @discord.ui.button(label="Ajouter un CPU", style=discord.ButtonStyle.blurple)
+    async def add_cpu_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        #await self.ctx.send("un CPU a rejoint la partie !")
+        cpu_player = self.game.create_cpu_player()
+        self.game.add_player(cpu_player)
+        await interaction.response.send_message(f"{cpu_player.name} a rejoint la partie !", ephemeral=False)
+        if self.game.can_start():
+            await interaction.response.send_message(f"La partie peut maintenant commencer !", ephemeral=False)
+
+    @discord.ui.button(label="Démarrer", style=discord.ButtonStyle.success)
+    async def start_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        #await self.ctx.send("La partie commence maintenant !")
+        if not self.game.can_start():
+            await interaction.response.send_message(f"La partie ne peut pas être démarrée !", ephemeral=False)
+            return
+        self.clear_items()
+        await interaction.response.send_message(f"La partie commence maintenant !", ephemeral=False)
+        self.game.start_game()
+        self.game.start_betting_round()
+        await self.game.display_player_window(self.game.current_player) 
+        await self.ctx.send(f"La partie!")
+
 
 class PlayerView(discord.ui.View):
 
@@ -475,7 +521,7 @@ class PlayerView(discord.ui.View):
         self.add_item(self.countdown_button)
         self._countdown_task = None
         self.running = True
-        
+
 ###################################
 
     @discord.ui.button(label="Suivre", style=discord.ButtonStyle.success)
@@ -503,7 +549,7 @@ class PlayerView(discord.ui.View):
 
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-        
+
 ###################################
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
@@ -514,10 +560,9 @@ class PlayerView(discord.ui.View):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
 
-        await interaction.response.send_modal(
-            CustomBetModal(self.game, self.player))
+        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
         self.game.next_turn()
-        
+
 ###################################
 
     @discord.ui.button(label="Coucher", style=discord.ButtonStyle.danger)
@@ -526,7 +571,7 @@ class PlayerView(discord.ui.View):
         if (interaction.user
                 != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            
+
             return
         self.clear_items()
         await interaction.message.edit(view=self)
@@ -541,7 +586,7 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-        
+
 ###################################
 
     @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
@@ -564,7 +609,7 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} as quitté la table.")
         await self.game.handle_played(self.ctx)
         self.game.next_turn()
-    
+
 ###################################
 
     @discord.ui.button(label="voir cartes", style=discord.ButtonStyle.secondary)
@@ -591,9 +636,9 @@ class PlayerView(discord.ui.View):
     def start_countdown(self, message: discord.Message):
         self._countdown_task = asyncio.create_task(self.countdown_task(message))
 
-    
+
     async def countdown_task(self, message: discord.Message):
-        
+
         try:
             for i in range(20, 0, -1):
                 self.countdown_button.label = f"Décompte : {i}s"
@@ -611,7 +656,7 @@ class PlayerView(discord.ui.View):
             self.game.next_turn()
         except asyncio.CancelledError:
             return
-        
+
     async def stop_countdown(self):
         if self._countdown_task:
             self._countdown_task.cancel()
@@ -668,9 +713,8 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
                                                     ephemeral=True)
             return False
         return True
-                    
-                        
-                                               
-                
-                    
-                   
+
+
+
+
+

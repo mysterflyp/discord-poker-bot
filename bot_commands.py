@@ -206,7 +206,8 @@ class BotCommands(commands.Cog):
         await ctx.send(f"Poker initialisé")
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")
-        
+        await self.bot.game.display_entry_window(ctx)
+
     @commands.command(name="join_poker")
     async def join_poker(self, ctx):
         if self.bot.game.status != GameStatus.INIT:
@@ -265,7 +266,7 @@ class BotCommands(commands.Cog):
 
         self.bot.game.start_game()
         self.bot.game.start_betting_round()
-        
+
         player_hands = self.bot.game.get_players_hands()
         for player in self.bot.game.players:
             hand = player_hands.get(player, [])
@@ -380,7 +381,7 @@ class BotCommands(commands.Cog):
 
         await ctx.send(f"Contenu du pot : {self.bot.game.pot} jetons")
 
-    
+
     @commands.command(name="reset_poker")
     @commands.has_permissions(administrator=True)
     async def reset_poker(self, ctx):
@@ -392,7 +393,7 @@ class BotCommands(commands.Cog):
     async def aide(self, ctx):
         help_text = """
         Bienvenue dans l'aide ! Voici les commandes disponibles :
-    
+
         1. $aide - Affiche cette aide.
         2. $solde - Affiche votre argent.
         3. $niveau - Affiche votre pourcentage d'expérience.
@@ -406,7 +407,7 @@ class BotCommands(commands.Cog):
         11. $relancer - Relance la mise du tour.
         12. $coucher - Se couche.
         13. $partir - Quitte la partie
-    
+
         Commandes admin
         1. $donner @utilisateur montant - Donne de l'argent à un utilisateur.
         2. $ban_id @utilisateur raison - Banni un utilisateur par ID.
@@ -414,7 +415,7 @@ class BotCommands(commands.Cog):
         4. $reset_balance @utilisateur - Réinitialise l'argent de l'utilisateur.
         5. $user_info @utilisateur - Affiche les informations sur un utilisateur.
         6. $reset_poker - Réinitialise le poker.
-    
+
         Utilisez ces commandes pour interagir avec le bot.
         """
         await ctx.send(help_text)
