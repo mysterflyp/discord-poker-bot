@@ -571,13 +571,15 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
     async def custom_bet_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
         await interaction.response.defer()
-        if (interaction.user
-                != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
+
+        if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
+            await interaction.followup.send("Ce n'est pas votre tour !", ephemeral=True)
             return
 
-        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
+        await self.game.handle_played(self.game.ctx)
+        await self.game.next_turn()
         self.game.next_turn()
 
 ###################################
@@ -683,13 +685,14 @@ class PlayerView(discord.ui.View):
                 pass
 
 ###################################
-
 class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
-    amount = discord.ui.TextInput(label="Entrez le montant à miser",
-                                  placeholder="Ex= 150",
-                                  min_length=1,
-                                  max_length=10,
-                                  required=True)
+    amount = discord.ui.TextInput(
+        label="Entrez le montant à miser",
+        placeholder="Ex : 150",
+        min_length=1,
+        max_length=10,
+        required=True
+    )
 
     def __init__(self, game, player):
         super().__init__()
@@ -713,12 +716,14 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
             self.game.bet(self.player, amount)
             await interaction.response.send_message(
                 f"✅ {self.player.name} a misé **{amount} jetons**.",
-                ephemeral=False)
+                ephemeral=False
+            )
             await self.game.handle_played(self.game.ctx)
+
         except ValueError as e:
-            await interaction.response.send_message(f"Erreur: {e}",
-                                                    ephemeral=True)
-            self.game.next_turn()
+            await interaction.response.send_message(f"Erreur : {e}", ephemeral=True)
+
+
 
 
 ##################################
