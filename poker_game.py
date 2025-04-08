@@ -466,48 +466,66 @@ class PokerGame:
         cards_str = ', '.join([str(card) for card in player_cards])
         return f"{player.name} a les cartes : {cards_str}"
 
+class MockGame:
+    def __init__(self):
+        self.players = []
+
+    def add_player(self, player):
+        self.players.append(player)
+
+    def create_cpu_player(self):
+        return discord.Object(id=123456789)  # Un faux utilisateur CPU
+
+    def can_start(self):
+        return len(self.players) >= 2
+
+    def start_game(self):
+        pass
+
+    def start_betting_round(self):
+        pass
+
+    async def display_player_window(self, player):
+        pass
+
 class JoinPokerView(discord.ui.View):
     def __init__(self, ctx, game):
-        super().__init__()
+        super().__init__(timeout=None)
         self.ctx = ctx
         self.game = game
 
     @discord.ui.button(label="Rejoindre", style=discord.ButtonStyle.green)
     async def join_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        #await self.ctx.send("vous avez rejoint la partie !")
         await interaction.response.defer()
         if interaction.user in self.game.players:
-            await interaction.response.send_message("Vous avez déjà rejoint la partie !", ephemeral=False)
+            await interaction.followup.send("Vous avez déjà rejoint la partie !", ephemeral=True)
             return
         self.game.add_player(interaction.user)
-        await interaction.response.send_message(f"{interaction.user.name} a rejoint la partie !", ephemeral=False)
+        await interaction.followup.send(f"{interaction.user.name} a rejoint la partie !", ephemeral=False)
         if self.game.can_start():
-            await interaction.response.send_message(f"La partie peut maintenant commencer !", ephemeral=False)
-
+            await interaction.followup.send("La partie peut maintenant commencer !", ephemeral=False)
+    
     @discord.ui.button(label="Ajouter un CPU", style=discord.ButtonStyle.blurple)
     async def add_cpu_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        #await self.ctx.send("un CPU a rejoint la partie !")
         cpu_player = self.game.create_cpu_player()
         self.game.add_player(cpu_player)
-        await interaction.response.send_message(f"{cpu_player.name} a rejoint la partie !", ephemeral=False)
+        await interaction.followup.send("Un CPU a rejoint la partie !", ephemeral=False)
         if self.game.can_start():
-            await interaction.response.send_message(f"La partie peut maintenant commencer !", ephemeral=False)
-
+            await interaction.followup.send("La partie peut maintenant commencer !", ephemeral=False)
+    
     @discord.ui.button(label="Démarrer", style=discord.ButtonStyle.success)
     async def start_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        #await self.ctx.send("La partie commence maintenant !")
         if not self.game.can_start():
-            await interaction.response.send_message(f"La partie ne peut pas être démarrée !", ephemeral=False)
+            await interaction.followup.send("La partie ne peut pas être démarrée !", ephemeral=False)
             return
         self.clear_items()
-        await interaction.response.send_message(f"La partie commence maintenant !", ephemeral=False)
+        await interaction.followup.send("La partie commence maintenant !", ephemeral=False)
         self.game.start_game()
         self.game.start_betting_round()
-        await self.game.display_player_window(self.game.current_player) 
-        await self.ctx.send(f"La partie!")
-
+        await self.game.display_player_window(self.game.players[0])
+        await self.ctx.send("La partie !")
 
 class PlayerView(discord.ui.View):
 
