@@ -266,12 +266,15 @@ class BotCommands(commands.Cog):
 
         self.bot.game.start_game()
         self.bot.game.start_betting_round()
+        self.bot.game.display_entry_window(ctx)
+
 
         player_hands = self.bot.game.get_players_hands()
         for player in self.bot.game.players:
             hand = player_hands.get(player, [])
             if not isinstance(player, FakeMember):
                 await self.bot.game.display_player_window(self.bot.game.current_player)
+                
 
 
     # Commande pour miser, suivre, relancer
