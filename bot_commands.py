@@ -207,6 +207,8 @@ class BotCommands(commands.Cog):
         self.bot.game.add_player(ctx.author)
         await ctx.send(f"{ctx.author.name} a rejoint la table!")
         await self.bot.game.display_entry_window(ctx)
+        await self.bot.game.display_cpu_window(ctx)
+        await self.bot.game.display_start_window(ctx)
 
     @commands.command(name="join_poker")
     async def join_poker(self, ctx):
