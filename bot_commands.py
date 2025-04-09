@@ -232,7 +232,7 @@ class BotCommands(commands.Cog):
 
         if self.bot.game.can_start():
             await ctx.send(f"La partie peut maintenant commencer !")
-            await ctx.send(f"Utilisez la commande $start pour démarrer")
+            await ctx.send(f"cliquez sur le bouton Démarrer la partie")
 
     @commands.command(name="join_cpu")
     async def join_cpu(self, ctx):

@@ -373,8 +373,8 @@ class PokerGame:
     async def display_start_window(self, ctx):
         Start_view = StartView (self.ctx, self)
         message = await self.ctx.send(view=Start_view)
-    
-        
+
+
     async def handle_played(self, ctx):
         await self._compute_next_player(ctx)
 
@@ -521,7 +521,7 @@ class JoinCpuView(discord.ui.View):
         self.ctx = ctx
         self.game = game
         self.cpu_count = 0
-            
+
     @discord.ui.button(label="Ajouter un CPU", style=discord.ButtonStyle.blurple)
     async def add_cpu_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -760,8 +760,3 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
                                                     ephemeral=True)
             return False
         return True
-
-
-
-
-
