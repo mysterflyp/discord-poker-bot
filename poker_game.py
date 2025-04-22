@@ -597,7 +597,6 @@ class PlayerView(discord.ui.View):
             await self.ctx.send(f"Erreur: {e}")
 
         await self.game.handle_played(self.ctx)
-        self.game.next_turn()
 
 ###################################
 
@@ -611,8 +610,6 @@ class PlayerView(discord.ui.View):
             return
 
         await self.game.handle_played(self.game.ctx)
-        await self.game.next_turn()
-        self.game.next_turn()
 
 ###################################
 
@@ -636,7 +633,6 @@ class PlayerView(discord.ui.View):
 
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
-        self.game.next_turn()
 
 ###################################
 
@@ -659,7 +655,6 @@ class PlayerView(discord.ui.View):
 
         await self.ctx.send(f"{self.player.name} as quitté la table.")
         await self.game.handle_played(self.ctx)
-        self.game.next_turn()
 
 ###################################
 
@@ -704,7 +699,6 @@ class PlayerView(discord.ui.View):
 
             await self.ctx.send(f"{self.player.name} s'est couché.")
             await self.game.handle_played(self.ctx)
-            self.game.next_turn()
         except asyncio.CancelledError:
             return
 
