@@ -120,39 +120,6 @@ class PokerGame:
         """Retourne si un joueur s'est couché."""
         return self.players_bets.get(player, None) is None
 
-    async def _compute_next_player(self, ctx):
-        """Détermine le prochain joueur actif qui doit jouer ou termine le tour."""
-        if not self.players:
-            self.current_player = None
-            return  # Aucun joueur
-
-        # Si current_player est None, on prend le premier joueur non couché
-        if self.current_player is None:
-            self.current_player = self.get_first_active_player()
-            return
-
-        # Si c'est un joueur humain, on continue comme d'habitude
-        if isinstance(self.current_player, FakeMember):
-            # Si c'est un FakeMember, on prend la décision automatiquement
-            action, amount = self.current_player.decide_action(self)
-
-            if action == 'fold':
-                await self.fold(self.current_player)
-                await ctx.send(f"{self.current_player.name} se couche.")
-            elif action == 'call':
-                await self.bet(self.current_player, amount)
-                await ctx.send(f"{self.current_player.name} suit avec {amount} jetons.")
-            elif action == 'raise':
-                await self.bet(self.current_player, amount)
-                await ctx.send(f"{self.current_player.name} relance avec {amount} jetons.")
-
-                # Après l'action, on passe au joueur suivant
-            await self._compute_next_player(ctx)
-            return
-
-            # Si ce n'est pas un FakeMember, on passe au joueur humain
-        await self.display_player_window(self.current_player)
-
     async def bet(self, player, amount):
         """Traitement d'une mise."""
         self.players_bets[player] = self.players_bets.get(player, 0) + amount
@@ -178,46 +145,46 @@ class PokerGame:
 
         if not self.players:
             self.current_player = None
-                return  # Aucun joueur
+            return  # Aucun joueur
 
         # Si current_player est None, on prend le premier joueur non couché
         if self.current_player is None:
             #await ctx.send(f"pas de current player, recup first actif ")
             self.current_player = self.get_first_active_player()
-                return
+            return
 
         # si tout les joueurs sont couchés, alors il n'y a plus de next player a jouer
-    num_players = len(self.players)
-    num_fold_players = len(self.folded_players)
-    num_unfold_players = num_players - num_fold_players
-    if num_unfold_players == 1:
-            #await ctx.send(f"in compute next player : break : players={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
-        self.current_player = None
-        return
+        num_players = len(self.players)
+        num_fold_players = len(self.folded_players)
+        num_unfold_players = num_players - num_fold_players
+        if num_unfold_players == 1:
+                #await ctx.send(f"in compute next player : break : players={num_players} fold={num_fold_players} => unfold={num_unfold_players}==1 =>out")
+            self.current_player = None
+            return
 
-    min_bet = max(self.min_bet_tour, self.get_current_max_bet())
+        min_bet = max(self.min_bet_tour, self.get_current_max_bet())
 
-    current_index = self.players.index(self.current_player)
+        current_index = self.players.index(self.current_player)
 
-    for _ in range(num_players):  # Boucle circulaire
-        current_index = (current_index + 1) % num_players
-        next_player = self.players[current_index]
+        for _ in range(num_players):  # Boucle circulaire
+            current_index = (current_index + 1) % num_players
+            next_player = self.players[current_index]
 
-        if next_player not in self.folded_players:
-            # Si on revient à first_max_bet_player, on termine le tour
-            if next_player == self.first_max_bet_player:
-                self.current_player = None
-                return  # Tour terminé
+            if next_player not in self.folded_players:
+                # Si on revient à first_max_bet_player, on termine le tour
+                if next_player == self.first_max_bet_player:
+                    self.current_player = None
+                    return  # Tour terminé
 
-                # Si ce joueur doit encore miser, on l'assigne comme current_player
-            player_bet = self.players_bets.get(next_player, 0)
-            if (player_bet < min_bet) or (min_bet == 0):
-                self.current_player = next_player
-                return
+                    # Si ce joueur doit encore miser, on l'assigne comme current_player
+                player_bet = self.players_bets.get(next_player, 0)
+                if (player_bet < min_bet) or (min_bet == 0):
+                    self.current_player = next_player
+                    return
 
-        # Aucun joueur ne doit jouer, on passe au tour suivant
-        await ctx.send(f"fin de la fonction _compute_next_player return none")
-        self.current_player = None
+            # Aucun joueur ne doit jouer, on passe au tour suivant
+            await ctx.send(f"fin de la fonction _compute_next_player return none")
+            self.current_player = None
 
     def reset_current_player(self):
         """Retourne le premier joueur qui n'est pas couché."""
@@ -226,10 +193,10 @@ class PokerGame:
 
     def get_first_active_player(self):
         """Retourne le premier joueur qui n'est pas couché."""
-    for player in self.players:
-        if player not in self.folded_players:
-            return player
-        return None
+        for player in self.players:
+            if player not in self.folded_players:
+                return player
+            return None
 
     def view_cards(self, player):
         """Affiche les cartes du joueur."""
