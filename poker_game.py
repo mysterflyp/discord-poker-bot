@@ -86,17 +86,29 @@ class PokerGame:
         self.ctx = ctx
 
     def can_start(self):
+        # Cant start if not in appropriate status
         if self.status == GameStatus.OFF or self.status == GameStatus.RUNNING:
             return False
-        return len(self.bot.game.players) >= MIN_PLAYERS
+
+        # Cant start if not enough players
+        if self.get_players_count() < MIN_PLAYERS:
+            return False
+
+        return True
 
     def add_player(self, player):
         if player not in self.players:
             self.players.append(player)
 
+    def get_players_count(self):
+        return len(self.players)
+
+    def get_cpu_players_count(self):
+        return len([p for p in self.players if isinstance(p, FakeMember)])
+
     def create_cpu_player(self):
         """Ajoute un joueur CPU."""
-        num = 1 + len([p for p in self.players if isinstance(p, FakeMember)])
+        num = 1 + self.get_cpu_players_count()
         cpu_id = 9000 + num
         cpu_player = FakeMember(self.bot, f"FakePlayer_{num}", cpu_id)
         return cpu_player
@@ -504,7 +516,6 @@ class JoinPokerView(discord.ui.View):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.game = game
-        self.cpu_count = 0 
 
     @discord.ui.button(label="Rejoindre", style=discord.ButtonStyle.green)
     async def join_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -520,17 +531,14 @@ class JoinCpuView(discord.ui.View):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.game = game
-        self.cpu_count = 0
 
     @discord.ui.button(label="Ajouter un CPU", style=discord.ButtonStyle.blurple)
     async def add_cpu_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         cpu_player = self.game.create_cpu_player()
         self.game.add_player(cpu_player)
-        self.cpu_count += 1
-        total_players = len(self.game.players)
         await interaction.followup.send(
-            f"Un CPU a rejoint la partie ! Nombre total de CPU : {self.cpu_count}", ephemeral=False
+            f"Un CPU a rejoint la partie ! Nombre total de CPU : {self.game.get_cpu_players_count()}", ephemeral=False
         )
 
 class StartView(discord.ui.View):
@@ -538,7 +546,6 @@ class StartView(discord.ui.View):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.game = game
-        self.cpu_count = 0
 
     @discord.ui.button(label="Démarrer la partie", style=discord.ButtonStyle.success)
     async def start_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
