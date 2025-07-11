@@ -12,7 +12,7 @@ class DBManager(commands.Cog):
 
     async def cog_load(self):
         """Méthode appelée automatiquement lors du chargement du Cog."""
-        self.create_db();
+        self.create_db()
 
     def drop_db(self):
         """Drope la table users si elle existe."""

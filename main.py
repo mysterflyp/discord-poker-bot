@@ -10,6 +10,7 @@ import aiosqlite
 import json
 import random
 from poker_game import PokerGame
+from economy_manager import EconomyManager
 
 # Récuperation du token du bot depuis les variables d'environement
 TOKEN_BOT = os.environ['TOKEN_BOT']
