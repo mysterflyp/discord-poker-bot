@@ -113,7 +113,7 @@ class PokerGame:
                 self.bet(player, amount_to_call)
                 await self.ctx.send(f"{player.mention} suit avec {amount_to_call} jetons.")
             elif action == 'raise':
-                raise_amount = random.randint(10, min(50, remaining_chips))
+                raise_amount = random.randint(1, min(15, remaining_chips))
                 self.bet(player, raise_amount)
                 await self.ctx.send(f"{player.mention} relance de {raise_amount} jetons.")
         except Exception as e:
@@ -122,6 +122,7 @@ class PokerGame:
 
         await self.handle_played(self.ctx)
 
+    
     def initialize(self, ctx):
         self.status = GameStatus.INIT
         self.ctx = ctx
@@ -151,7 +152,7 @@ class PokerGame:
         """Ajoute un joueur CPU."""
         num = 1 + self.get_cpu_players_count()
         cpu_id = 9000 + num
-        cpu_player = FakeMember(self.bot, f"FakePlayer_{num}", cpu_id)
+        cpu_player = FakeMember(self.bot, f"Joueur_{num}", cpu_id)
         return cpu_player
 
     def deal_cards(self):
@@ -218,7 +219,7 @@ class PokerGame:
 
     def start_game(self):
         self.status = GameStatus.RUNNING
-        self.min_bet_tour = 20
+        self.min_bet_tour = 3
 
         self._init_players()
         self.deal_cards()
@@ -231,7 +232,7 @@ class PokerGame:
                 self.player_chips[player] = self._db.user_get_balance(
                     player.id)  # Get the player's balance from DB
             else:
-                self.player_chips[player] = 500
+                self.player_chips[player] = 100
 
             self.players_bets[player] = 0  # Initial bet of 0 for each player
 
@@ -307,7 +308,7 @@ class PokerGame:
 
     def reset_game(self):
         #self.players.clear()
-        self.status = GameStatus.INIT
+        self.status = GameStatus.OFF
         self.folded_players.clear()
         self.pot = 0
         self.community_cards.clear()
@@ -317,7 +318,7 @@ class PokerGame:
         self.game_id = random.randint(
             1000, 9999)  # Nouveau game_id pour la prochaine partie
         self.winners = []  # Liste vide de gagnants
-        self.round_over = False  # Réinitialiser l'état de la partie
+        self.round_over = True  # Réinitialiser l'état de la partie
 
     def bet(self, player, amount):
         if player not in self.players:
@@ -453,9 +454,7 @@ class PokerGame:
             await ctx.send(
                 f"Le jeu est terminé! Le gagnant est: **{winners_text}** avec une **{self.winning_hand_type}**. Le pot de **{self.pot} jetons** a été distribué."
             )
-            await self.display_entry_window(self.players[0])
-            await self.display_cpu_window(self.players[0])
-            await self.display_start_window(self.players[0])
+            await ctx.send(f"Faites   **$start_poker**   pour lancer une nouvele partie.")
             self.reset_game()
 
     def _get_author_or_cpu_if_current(self):

@@ -54,7 +54,7 @@ class EconomyManager(commands.Cog):
                 if self.has_eligible_role(member) and self._db:
                     if self._db.get_niveau(member.id) is None:
                         self._db.user_create(member.id)
-                    self._db.user_add_niveau(member.id, 0.25)
+                    self._db.user_add_niveau(member.id, 0.1)
                     print(f"📈 {member.display_name} a reçu 0.25 XP automatiquement.")
 
     @commands.Cog.listener()
