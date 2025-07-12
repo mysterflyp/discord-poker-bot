@@ -81,6 +81,47 @@ class PokerGame:
         self.current_player = None
         self.first_max_bet_player = None
 
+    async def play_cpu_turn(self, player):
+        """Simule le tour d'un joueur CPU avec une décision aléatoire."""
+
+        current_bet = self.get_current_max_bet()
+        player_bet = self.get_player_bet(player)
+        remaining_chips = self.player_chips[player]
+
+        options = []
+
+        # S'il peut suivre
+        if player_bet < current_bet and (remaining_chips >= (current_bet - player_bet)):
+            options += ['call', 'fold', 'raise']
+        elif player_bet == current_bet:
+            options += ['check', 'raise', 'fold']
+        else:
+            options.append('fold')
+
+        # Choix aléatoire
+        action = random.choice(options)
+
+        try:
+            if action == 'fold':
+                self.fold(player)
+                await self.ctx.send(f"{player.mention} s'est couché.")
+            elif action == 'check':
+                self.check(player)
+                await self.ctx.send(f"{player.mention} check.")
+            elif action == 'call':
+                amount_to_call = current_bet - player_bet
+                self.bet(player, amount_to_call)
+                await self.ctx.send(f"{player.mention} suit avec {amount_to_call} jetons.")
+            elif action == 'raise':
+                raise_amount = random.randint(10, min(50, remaining_chips))
+                self.bet(player, raise_amount)
+                await self.ctx.send(f"{player.mention} relance de {raise_amount} jetons.")
+        except Exception as e:
+            await self.ctx.send(f"{player.mention} a eu un problème : {str(e)}")
+            self.fold(player)
+
+        await self.handle_played(self.ctx)
+
     def initialize(self, ctx):
         self.status = GameStatus.INIT
         self.ctx = ctx
@@ -370,9 +411,13 @@ class PokerGame:
         return difference
 
     async def display_player_window(self, player):
-        player_view = PlayerView(self.ctx, self, player)
-        message = await self.ctx.send(f"c'est au tour de {player.name} :", view=player_view)
-        player_view.start_countdown(message)
+        if isinstance(player, FakeMember):
+            await self.play_cpu_turn(player)
+        else:
+            player_view = PlayerView(self.ctx, self, player)
+            message = await self.ctx.send(f"c'est au tour de {player.name} :", view=player_view)
+            player_view.start_countdown(message)
+
 
     async def display_entry_window(self, ctx):
         Joinpoker_view = JoinPokerView(self.ctx, self)

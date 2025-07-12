@@ -139,7 +139,7 @@ class BotCommands(commands.Cog):
     @commands.command(name="reset_balance")
     @commands.has_permissions(administrator=True)
     async def reset_balance(self, ctx, member: discord.Member):
-        new_balance = self._db.user_reset_niveau(member.id)
+        new_balance = self._db.user_reset_balance(member.id)
         if new_balance == 0:
             await ctx.send(f"Le solde de {member.mention} a été remis à zéro.")
         else:
