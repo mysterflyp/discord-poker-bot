@@ -157,7 +157,8 @@ class BotCommands(commands.Cog):
         else:
             await ctx.send("Une erreur est survenue.")
 
-    # Commande pour bannir un utilisateur par ID
+
+    # Commande pour bannir un utilisateur par ID 
     @commands.command(name="ban")
     async def ban_id(self,
                      ctx,

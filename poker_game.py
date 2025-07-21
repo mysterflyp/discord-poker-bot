@@ -80,6 +80,10 @@ class PokerGame:
         self.winners = []
         self.current_player = None
         self.first_max_bet_player = None
+        self.idle_cpu_turns = 0
+        self.max_idle_turns = 10  # Limite de sécurité
+        
+
 
 
     ########################LOGIQUE DU BOT####################################################
@@ -105,7 +109,6 @@ class PokerGame:
             if remaining_chips >= amount_to_call:
                 options += ['call', 'raise']
             else:
-                # Pas assez pour suivre → il ne peut que fold (sauf s'il est engagé)
                 if not is_committed:
                     options.append('fold')
 
@@ -115,10 +118,8 @@ class PokerGame:
             if not is_committed:
                 options.append('fold')
 
-        
         # === CAS 3 : Il a misé plus (rare mais possible) ===
         else:
-            # Pour la sécurité, on autorise uniquement le check (ou raise si on veut le permettre)
             options += ['check']
 
         # === Empêche le fold si déjà engagé ===
@@ -145,18 +146,16 @@ class PokerGame:
                 self.bet(player, raise_amount)
                 self.bot_committed_players.add(player)
                 await self.ctx.send(f"{player.mention} relance de {raise_amount} jetons.")
-        except Exception as e:
-            await self.ctx.send(f"{player.mention} a eu un problème : {str(e)}")
-            self.fold(player)
+            # ... après avoir choisi l'action
+            if action in ['check', 'fold']:
+                self.idle_cpu_turns += 1
+            else:
+                self.idle_cpu_turns = 0  # Reset si quelqu’un mise
 
-        # Vérifie s'il ne reste que des bots encore actifs
-            remaining_players = [p for p in self.active_players if not self.has_folded(p)]
-            human_players = [p for p in remaining_players if not self.is_bot(p)]
-
-            if not human_players:
-                await self.ctx.send("Tous les joueurs humains se sont couchés. La partie se termine.")
+            if self.idle_cpu_turns >= self.max_idle_turns:
                 await self.end_game()
-                return
+        except Exception as e:
+            self.fold(player)
 
         await self.handle_played(self.ctx)
 
@@ -189,19 +188,40 @@ class PokerGame:
             self.players.append(player)
 
     def get_players_count(self):
-        return len(self.players)
+        # Compte les joueurs humains
+        return sum(1 for player in self.players if not getattr(player, "is_cpu", False))
 
     def get_cpu_players_count(self):
-        return len([p for p in self.players if getattr(p, "is_cpu", False)])
+        # Compte les joueurs CPU
+        return sum(1 for player in self.players if getattr(player, "is_cpu", False))
+
     
     def create_cpu_player(self):
-        """Crée un joueur CPU."""
-        num = 1 + self.get_cpu_players_count()
+        """
+        Crée un joueur CPU selon les règles suivantes :
+        - Maximum 5 joueurs (humains + bots)
+        - Maximum 4 bots
+        - Le nombre de bots autorisés diminue avec le nombre de joueurs humains
+        """
+        cpu_count = self.get_cpu_players_count()
+        human_count = self.get_players_count()
+
+        if cpu_count >= 4:
+            raise ValueError("Nombre maximum de bots atteint (4).")
+
+        if cpu_count + human_count >= 5:
+            raise ValueError("Nombre total de joueurs atteint (5).")
+
+        max_bots_allowed = 5 - human_count
+        if cpu_count >= max_bots_allowed:
+            raise ValueError(f"Nombre de bots limité à {max_bots_allowed} en fonction du nombre de joueurs humains ({human_count}).")
+
+        num = 1 + cpu_count
         cpu_id = 9000 + num
         cpu_player = FakeMember(self.bot, f"Joueur_{num}", cpu_id)
-        cpu_player.is_cpu = True  # ✅ Ajouter cet attribut
+        cpu_player.is_cpu = True
+        self.players.append(cpu_player)
         return cpu_player
-
 
     def remove_last_cpu_player(self):
         for i in reversed(range(len(self.players))):
@@ -210,6 +230,7 @@ class PokerGame:
                 del self.players[i]
                 return True
         return False
+
 
     def deal_cards(self):
         self.player_hands = {
@@ -496,7 +517,6 @@ class PokerGame:
         if self.current_player:
             await self.display_player_window(self.current_player)
             return
-
         await ctx.send(f"Le tour est terminé ")
 
         # No next player, reveal next card
@@ -627,6 +647,31 @@ class JoinPokerView(discord.ui.View):
         self.game.add_player(interaction.user)
         await interaction.followup.send(f"{interaction.user.name} a rejoint la partie !", ephemeral=False)
 
+
+    @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
+    async def leave_poker_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+
+        if interaction.user not in self.game.players:
+            await interaction.followup.send("Vous n'êtes pas dans la partie.", ephemeral=True)
+            return
+
+        # Retirer le joueur de la liste
+        self.game.players.remove(interaction.user)
+
+        # Si c'était le joueur actuel
+        if self.game.current_player == interaction.user:
+            await self.ctx.send(f"{interaction.user.name} a quitté la table pendant son tour.")
+            await self.game.handle_played(self.ctx)  # Passe au joueur suivant
+        else:
+            await self.ctx.send(f"{interaction.user.name} a quitté la table.")
+
+        # Met à jour l'interface du message si nécessaire
+        self.clear_items()
+        await interaction.message.edit(view=self)
+
+        
+
 class JoinCpuView(discord.ui.View):
     def __init__(self, ctx, game):
         super().__init__(timeout=None)
@@ -671,6 +716,13 @@ class StartView(discord.ui.View):
         self.game.start_game()
         self.game.start_betting_round()
         await self.game.display_player_window(self.game.players[0])
+        
+    @discord.ui.button(label="maximum 5 joueurs", style=discord.ButtonStyle.secondary)
+    async def max_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        if not self.game.can_start():
+            await interaction.followup.send("ce n'est pas un bouton", ephemeral=False)
+            return
 
 class PlayerView(discord.ui.View):
 
@@ -722,7 +774,6 @@ class PlayerView(discord.ui.View):
 
         await self.stop_countdown()
 
-        self.clear_items()
         await interaction.message.edit(view=self)
 
         await interaction.response.send_modal(CustomBetModal(self.game, self.player))
@@ -735,7 +786,6 @@ class PlayerView(discord.ui.View):
         if (interaction.user
                 != self.player) and (not isinstance(self.player, FakeMember)):
             await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-
             return
         self.clear_items()
         await interaction.message.edit(view=self)
@@ -750,27 +800,8 @@ class PlayerView(discord.ui.View):
         await self.ctx.send(f"{self.player.name} s'est couché.")
         await self.game.handle_played(self.ctx)
 
-###################################
 
-    @discord.ui.button(label="Partir", style=discord.ButtonStyle.danger)
-    async def leave_poker_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
 
-        if (interaction.user
-                != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
-            return
-        await interaction.message.edit(view=self)
-
-        try:
-            await self.stop_countdown()
-            self.game.players.remove(self.player)
-        except ValueError as e:
-            await self.ctx.send(f"{e}")
-            return
-
-        await self.ctx.send(f"{self.player.name} as quitté la table.")
-        await self.game.handle_played(self.ctx)
 
 ###################################
 
@@ -830,9 +861,9 @@ class PlayerView(discord.ui.View):
 class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
     amount = discord.ui.TextInput(
         label="Entrez le montant à miser",
-        placeholder="Ex : 150",
+        placeholder="Ex : 15",
         min_length=1,
-        max_length=10,
+        max_length=3,
         required=True
     )
 
@@ -861,7 +892,7 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
                 ephemeral=False
             )
             await self.game.handle_played(self.game.ctx)
-
+            self.clear_items()
         except ValueError as e:
             await interaction.response.send_message(f"Erreur : {e}", ephemeral=True)
 
