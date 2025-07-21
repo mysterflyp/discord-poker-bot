@@ -81,24 +81,51 @@ class PokerGame:
         self.current_player = None
         self.first_max_bet_player = None
 
-    async def play_cpu_turn(self, player):
-        """Simule le tour d'un joueur CPU avec une décision aléatoire."""
 
+    ########################LOGIQUE DU BOT####################################################
+
+
+    async def play_cpu_turn(self, player):
+        """Simule le tour d'un joueur CPU avec une décision aléatoire et cohérente."""
         current_bet = self.get_current_max_bet()
         player_bet = self.get_player_bet(player)
         remaining_chips = self.player_chips[player]
 
+        # Initialiser si non défini
+        if not hasattr(self, 'bot_committed_players'):
+            self.bot_committed_players = set()
+
+        is_committed = player in self.bot_committed_players
         options = []
 
-        # S'il peut suivre
-        if player_bet < current_bet and (remaining_chips >= (current_bet - player_bet)):
-            options += ['call', 'fold', 'raise']
-        elif player_bet == current_bet:
-            options += ['check', 'raise', 'fold']
-        else:
-            options.append('fold')
+        # === CAS 1 : Le bot est en retard (doit call ou fold) ===
+        if player_bet < current_bet:
+            amount_to_call = current_bet - player_bet
 
-        # Choix aléatoire
+            if remaining_chips >= amount_to_call:
+                options += ['call', 'raise']
+            else:
+                # Pas assez pour suivre → il ne peut que fold (sauf s'il est engagé)
+                if not is_committed:
+                    options.append('fold')
+
+        # === CAS 2 : Le bot est à égalité avec le current_bet ===
+        elif player_bet == current_bet:
+            options += ['check']
+            if not is_committed:
+                options.append('fold')
+
+        
+        # === CAS 3 : Il a misé plus (rare mais possible) ===
+        else:
+            # Pour la sécurité, on autorise uniquement le check (ou raise si on veut le permettre)
+            options += ['check']
+
+        # === Empêche le fold si déjà engagé ===
+        if is_committed and 'fold' in options:
+            options.remove('fold')
+
+        # Choix aléatoire parmi les options valides
         action = random.choice(options)
 
         try:
@@ -111,16 +138,35 @@ class PokerGame:
             elif action == 'call':
                 amount_to_call = current_bet - player_bet
                 self.bet(player, amount_to_call)
+                self.bot_committed_players.add(player)
                 await self.ctx.send(f"{player.mention} suit avec {amount_to_call} jetons.")
             elif action == 'raise':
-                raise_amount = random.randint(1, min(15, remaining_chips))
+                raise_amount = random.randint(1, min(10, remaining_chips))
                 self.bet(player, raise_amount)
+                self.bot_committed_players.add(player)
                 await self.ctx.send(f"{player.mention} relance de {raise_amount} jetons.")
         except Exception as e:
             await self.ctx.send(f"{player.mention} a eu un problème : {str(e)}")
             self.fold(player)
 
+        # Vérifie s'il ne reste que des bots encore actifs
+            remaining_players = [p for p in self.active_players if not self.has_folded(p)]
+            human_players = [p for p in remaining_players if not self.is_bot(p)]
+
+            if not human_players:
+                await self.ctx.send("Tous les joueurs humains se sont couchés. La partie se termine.")
+                await self.end_game()
+                return
+
         await self.handle_played(self.ctx)
+
+
+
+
+
+    ########################LOGIQUE DU BOT####################################################
+
+
 
     
     def initialize(self, ctx):
@@ -146,14 +192,24 @@ class PokerGame:
         return len(self.players)
 
     def get_cpu_players_count(self):
-        return len([p for p in self.players if isinstance(p, FakeMember)])
-
+        return len([p for p in self.players if getattr(p, "is_cpu", False)])
+    
     def create_cpu_player(self):
-        """Ajoute un joueur CPU."""
+        """Crée un joueur CPU."""
         num = 1 + self.get_cpu_players_count()
         cpu_id = 9000 + num
         cpu_player = FakeMember(self.bot, f"Joueur_{num}", cpu_id)
+        cpu_player.is_cpu = True  # ✅ Ajouter cet attribut
         return cpu_player
+
+
+    def remove_last_cpu_player(self):
+        for i in reversed(range(len(self.players))):
+            player = self.players[i]
+            if getattr(player, "is_cpu", False):  # ✅ Vérifie l'attribut
+                del self.players[i]
+                return True
+        return False
 
     def deal_cards(self):
         self.player_hands = {
@@ -218,6 +274,7 @@ class PokerGame:
         return max(self.players_bets.values(), default=0)
 
     def start_game(self):
+        self.bot_committed_players = set()
         self.status = GameStatus.RUNNING
         self.min_bet_tour = 3
 
@@ -336,7 +393,7 @@ class PokerGame:
         min_bet = self.get_current_max_bet()
 
         # Le montant relatif c'est "coller" + la relance
-        amount_relative = amount + min_bet
+        amount_relative = amount 
 
         # Maintenant, à combien cela revient-il par rapport a son bet actuel
         bet_relatif = amount_relative - self.players_bets[player]
@@ -585,6 +642,19 @@ class JoinCpuView(discord.ui.View):
             f"Un CPU a rejoint la partie ! Nombre total de CPU : {self.game.get_cpu_players_count()}", ephemeral=False
         )
 
+    @discord.ui.button(label="Retirer un CPU", style=discord.ButtonStyle.red)
+    async def remove_cpu_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        removed = self.game.remove_last_cpu_player()
+        if removed:
+            await interaction.followup.send(
+                f"Un CPU a été retiré. Nombre total de CPU : {self.game.get_cpu_players_count()}", ephemeral=False
+            )
+        else:
+            await interaction.followup.send(
+                "Aucun CPU à retirer !", ephemeral=True
+            )
+
 class StartView(discord.ui.View):
     def __init__(self, ctx, game):
         super().__init__(timeout=None)
@@ -646,14 +716,16 @@ class PlayerView(discord.ui.View):
 
     @discord.ui.button(label="Relancer", style=discord.ButtonStyle.green)
     async def custom_bet_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
-        await interaction.response.defer()
-
         if (interaction.user != self.player) and (not isinstance(self.player, FakeMember)):
-            await interaction.followup.send("Ce n'est pas votre tour !", ephemeral=True)
+            await interaction.response.send_message("Ce n'est pas votre tour !", ephemeral=True)
             return
 
-        await self.game.handle_played(self.game.ctx)
+        await self.stop_countdown()
+
+        self.clear_items()
+        await interaction.message.edit(view=self)
+
+        await interaction.response.send_modal(CustomBetModal(self.game, self.player))
 
 ###################################
 

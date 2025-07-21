@@ -24,13 +24,12 @@ class EconomyManager(commands.Cog):
         if not self._db:
             raise RuntimeError("❌ DBManager doit être chargé avant EconomyManager")
 
-        # Lancer les tâches périodiques uniquement quand la DB est prête
         self.give_money_periodically.start()
         self.give_level_periodically.start()
 
-    def has_eligible_role(self, member: discord.Member) -> bool:
-        """Vérifie si le membre possède un des rôles éligibles."""
-        return any(role.id in (ROLE_ID, ROLE_ID2) for role in member.roles)
+    def is_in_vocal_with_role(self, member: discord.Member) -> bool:
+        """Vérifie si le membre est en vocal ET possède le rôle requis."""
+        return member.voice and any(role.id == ROLE_ID for role in member.roles)
 
     @tasks.loop(seconds=MONEY_INTERVAL)
     async def give_money_periodically(self):
@@ -38,12 +37,11 @@ class EconomyManager(commands.Cog):
             for member in guild.members:
                 if member.bot:
                     continue
-                if self.has_eligible_role(member) and self._db:
-                    # Créer le joueur s’il n’existe pas
-                    if self._db.get_niveau(member.id) is None:
+                if self.is_in_vocal_with_role(member) and self._db:
+                    if self._db.user_get_niveau(member.id) is None:
                         self._db.user_create(member.id)
-                    self._db.user_add_balance(member.id, 25)
-                    print(f"💰 {member.display_name} a reçu 25 jetons automatiquement.")
+                    self._db.user_add_balance(member.id, 3)
+                    print(f"💰 {member.display_name} a reçu 25 jetons (vocal).")
 
     @tasks.loop(seconds=LEVEL_INTERVAL)
     async def give_level_periodically(self):
@@ -51,11 +49,11 @@ class EconomyManager(commands.Cog):
             for member in guild.members:
                 if member.bot:
                     continue
-                if self.has_eligible_role(member) and self._db:
-                    if self._db.get_niveau(member.id) is None:
+                if self.is_in_vocal_with_role(member) and self._db:
+                    if self._db.user_get_niveau(member.id) is None:
                         self._db.user_create(member.id)
                     self._db.user_add_niveau(member.id, 0.1)
-                    print(f"📈 {member.display_name} a reçu 0.25 XP automatiquement.")
+                    print(f"📈 {member.display_name} a reçu 0.1 XP (vocal).")
 
     @commands.Cog.listener()
     async def on_message(self, message):
