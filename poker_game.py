@@ -10,7 +10,7 @@ from discord.webhook.async_ import interaction_message_response_params
 
 from db_manager import DBManager
 
-MIN_PLAYERS = 2
+MIN_PLAYERS = 1
 
 
 # Define the classes for the poker game
@@ -891,8 +891,8 @@ class CustomBetModal(discord.ui.Modal, title="Mise personnalisée"):
                 f"✅ {self.player.name} a misé **{amount} jetons**.",
                 ephemeral=False
             )
-            await self.game.handle_played(self.game.ctx)
             self.clear_items()
+            await self.game.handle_played(self.game.ctx)
         except ValueError as e:
             await interaction.response.send_message(f"Erreur : {e}", ephemeral=True)
 
