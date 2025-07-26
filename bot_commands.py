@@ -425,7 +425,7 @@ class BotCommands(commands.Cog):
         5. $user_info @utilisateur - Affiche les informations sur un utilisateur.
         6. $reset_poker - Réinitialise le poker.
         7. $add_item prix nom - Ajoute un article à la boutique.
-        8. $remove_item id - Supprime un article de la boutique.
+        8. $remove_item <id> - Supprime un article de la boutique.
         9. $list_items - Liste tous les articles de la boutique avec leurs IDs.
 
         Utilisez ces commandes pour interagir avec le bot.

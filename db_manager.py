@@ -72,8 +72,8 @@ class DBManager(commands.Cog):
                     ("Épée en bois", 100),
                     ("Arc en fer", 250),
                     ("Potion de soin", 50),
-                    ("Armure de cuir", 150),
-                    ("Bague magique", 500)
+                    ("Roulette russe", 200),
+                    ("VIP", 500000)
                 ]
                 
                 for item_name, item_price in default_items:
