@@ -415,6 +415,7 @@ class BotCommands(commands.Cog):
         11. $relancer - Relance la mise du tour.
         12. $coucher - Se couche.
         13. $partir - Quitte la partie
+        14. $boutique - Ouvre la boutique.
 
         Commandes admin
         1. $donner @utilisateur montant - Donne de l'argent à un utilisateur.
@@ -423,6 +424,9 @@ class BotCommands(commands.Cog):
         4. $reset_balance @utilisateur - Réinitialise l'argent de l'utilisateur.
         5. $user_info @utilisateur - Affiche les informations sur un utilisateur.
         6. $reset_poker - Réinitialise le poker.
+        7. $add_item prix nom - Ajoute un article à la boutique.
+        8. $remove_item id - Supprime un article de la boutique.
+        9. $list_items - Liste tous les articles de la boutique avec leurs IDs.
 
         Utilisez ces commandes pour interagir avec le bot.
         """
