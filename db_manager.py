@@ -60,18 +60,19 @@ class DBManager(commands.Cog):
                     )
                 ''')
 
-                # Vérifier si des items existent déjà
-                cursor.execute("SELECT COUNT(*) FROM items")
-                if cursor.fetchone()[0] == 0:
-                    # Ajout d'objets de base seulement si la table est vide
-                    items = [
-                        ("Épée en bois", 100),
-                        ("Arc en fer", 250),
-                        ("Potion de soin", 50),
-                        ("Armure de cuir", 150),
-                        ("Bague magique", 500)
-                    ]
-                    cursor.executemany("INSERT INTO items (name, price) VALUES (?, ?)", items)
+                # Ajouter les items par défaut seulement s'ils n'existent pas déjà
+                default_items = [
+                    ("Épée en bois", 100),
+                    ("Arc en fer", 250),
+                    ("Potion de soin", 50),
+                    ("Armure de cuir", 150),
+                    ("Bague magique", 500)
+                ]
+                
+                for item_name, item_price in default_items:
+                    cursor.execute("SELECT COUNT(*) FROM items WHERE name = ?", (item_name,))
+                    if cursor.fetchone()[0] == 0:
+                        cursor.execute("INSERT INTO items (name, price) VALUES (?, ?)", (item_name, item_price))
 
                 conn.commit()
                 print("Base de données initialisée avec succès.")
