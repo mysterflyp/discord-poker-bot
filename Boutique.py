@@ -19,11 +19,17 @@ class ShopView(View):
                 await interaction.response.send_message("❌ Aucun article disponible dans la boutique.", ephemeral=True)
                 return
             
+            # Limiter à 20 articles pour respecter les limites Discord (25 max)
+            items_display = items[:20]
+            
             embed = discord.Embed(title="🏪 Boutique", color=discord.Color.blue())
-            for item_id, name, price in items:
+            for item_id, name, price in items_display:
                 embed.add_field(name=f"{name}", value=f"Prix: {price} jetons", inline=False)
             
-            await interaction.response.send_message(embed=embed, view=PurchaseView(self.db, items), ephemeral=True)
+            if len(items) > 20:
+                embed.set_footer(text=f"Affichage de 20 articles sur {len(items)} disponibles")
+            
+            await interaction.response.send_message(embed=embed, view=PurchaseView(self.db, items_display), ephemeral=True)
         except Exception as e:
             print(f"Erreur lors de l'affichage des articles: {e}")
             await interaction.response.send_message("❌ Erreur lors du chargement de la boutique.", ephemeral=True)
@@ -58,11 +64,14 @@ class PurchaseView(View):
         self.db = db_manager
         self.items = items
         
-        # Créer un menu déroulant avec les articles
+        # Créer un menu déroulant avec les articles (limité à 20 pour Discord)
         options = []
-        for item_id, name, price in items:
+        items_limited = items[:20]  # Discord limite à 25 options max
+        for item_id, name, price in items_limited:
+            # Limiter la longueur du nom à 100 caractères (limite Discord)
+            display_name = name[:100] if len(name) > 100 else name
             options.append(discord.SelectOption(
-                label=name,
+                label=display_name,
                 description=f"Prix: {price} jetons",
                 value=str(item_id)
             ))
