@@ -12,7 +12,7 @@ class DBManager(commands.Cog):
 
     async def cog_load(self):
         """Méthode appelée automatiquement lors du chargement du Cog."""
-        self.create_db()
+        self.create_db();
 
     def drop_db(self):
         """Drope la table users si elle existe."""
@@ -40,6 +40,44 @@ class DBManager(commands.Cog):
                     roles TEXT
                 )
                 ''')
+                # Table des items
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        price INTEGER NOT NULL
+                    )
+                ''')
+
+                # Table des utilisateurs
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        user_id INTEGER PRIMARY KEY,
+                        balance INTEGER DEFAULT 500
+                    )
+                ''')
+
+                # Table des achats
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS purchases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER,
+                        item_id INTEGER,
+                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+
+                # Ajout d'objets de base
+                items = [
+                    ("Épée en bois", 100),
+                    ("Arc en fer", 250),
+                    ("Potion de soin", 50)
+                ]
+                cursor.executemany("INSERT INTO items (name, price) VALUES (?, ?)", items)
+
+                conn.commit()
+                print("Base de données initialisée avec succès.")
+
                 print("✅ Table `users` vérifiée/créée avec succès.")
         except sqlite3.Error as e:
             print(f"⚠️ Erreur lors de la création de la base : {e}")

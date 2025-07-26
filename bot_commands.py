@@ -1,9 +1,11 @@
 import discord
+import sqlite3
 from discord.ext import commands
-
 from db_manager import DBManager
 from poker_game import GameStatus, FakeMember, PlayerView
 from views.test_view import TestView
+
+
 
 
 class BotCommands(commands.Cog):
@@ -437,9 +439,9 @@ class BotCommands(commands.Cog):
         await ctx.send(f"Salut {ctx.author.mention} ! 😊")
 
 
-
-
-
 # Fonction pour ajouter les commandes au bot
 async def setup(bot):
     await bot.add_cog(BotCommands(bot))
+
+
+
