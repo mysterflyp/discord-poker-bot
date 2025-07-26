@@ -39,7 +39,7 @@ class ShopView(View):
         balance = self.db.user_get_balance(interaction.user.id)
         if balance is None:
             self.db.user_create(interaction.user.id)
-            balance = 500  # Valeur par défaut après création
+            balance = 100  # Valeur par défaut après création
         
         await interaction.response.send_message(f"💰 Vous avez **{balance}** jetons.", ephemeral=True)
     
