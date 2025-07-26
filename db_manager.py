@@ -67,7 +67,9 @@ class DBManager(commands.Cog):
                     items = [
                         ("Épée en bois", 100),
                         ("Arc en fer", 250),
-                        ("Potion de soin", 50)
+                        ("Potion de soin", 50),
+                        ("Armure de cuir", 150),
+                        ("Bague magique", 500)
                     ]
                     cursor.executemany("INSERT INTO items (name, price) VALUES (?, ?)", items)
 
