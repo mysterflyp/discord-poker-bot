@@ -33,27 +33,20 @@ class DBManager(commands.Cog):
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT NOT NULL,
-                    argent INTEGER DEFAULT 0,
+                    argent INTEGER DEFAULT 500,
                     niveau INTEGER DEFAULT 0,
                     discriminator TEXT,
                     joined_at TEXT,
                     roles TEXT
                 )
                 ''')
+                
                 # Table des items
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS items (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
                         price INTEGER NOT NULL
-                    )
-                ''')
-
-                # Table des utilisateurs
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS users (
-                        user_id INTEGER PRIMARY KEY,
-                        balance INTEGER DEFAULT 500
                     )
                 ''')
 
@@ -67,17 +60,19 @@ class DBManager(commands.Cog):
                     )
                 ''')
 
-                # Ajout d'objets de base
-                items = [
-                    ("Épée en bois", 100),
-                    ("Arc en fer", 250),
-                    ("Potion de soin", 50)
-                ]
-                cursor.executemany("INSERT INTO items (name, price) VALUES (?, ?)", items)
+                # Vérifier si des items existent déjà
+                cursor.execute("SELECT COUNT(*) FROM items")
+                if cursor.fetchone()[0] == 0:
+                    # Ajout d'objets de base seulement si la table est vide
+                    items = [
+                        ("Épée en bois", 100),
+                        ("Arc en fer", 250),
+                        ("Potion de soin", 50)
+                    ]
+                    cursor.executemany("INSERT INTO items (name, price) VALUES (?, ?)", items)
 
                 conn.commit()
                 print("Base de données initialisée avec succès.")
-
                 print("✅ Table `users` vérifiée/créée avec succès.")
         except sqlite3.Error as e:
             print(f"⚠️ Erreur lors de la création de la base : {e}")

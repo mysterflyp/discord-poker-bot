@@ -13,23 +13,27 @@ class ShopView(View):
     
     @discord.ui.button(label="🛒 Voir les articles", style=discord.ButtonStyle.primary)
     async def view_items(self, interaction: discord.Interaction, button: Button):
-        items = self.db.get_all_items()
-        if not items:
-            await interaction.response.send_message("❌ Aucun article disponible dans la boutique.", ephemeral=True)
-            return
-        
-        embed = discord.Embed(title="🏪 Boutique", color=discord.Color.blue())
-        for item_id, name, price in items:
-            embed.add_field(name=f"{name}", value=f"Prix: {price} jetons", inline=False)
-        
-        await interaction.response.send_message(embed=embed, view=PurchaseView(self.db, items), ephemeral=True)
+        try:
+            items = self.db.get_all_items()
+            if not items:
+                await interaction.response.send_message("❌ Aucun article disponible dans la boutique.", ephemeral=True)
+                return
+            
+            embed = discord.Embed(title="🏪 Boutique", color=discord.Color.blue())
+            for item_id, name, price in items:
+                embed.add_field(name=f"{name}", value=f"Prix: {price} jetons", inline=False)
+            
+            await interaction.response.send_message(embed=embed, view=PurchaseView(self.db, items), ephemeral=True)
+        except Exception as e:
+            print(f"Erreur lors de l'affichage des articles: {e}")
+            await interaction.response.send_message("❌ Erreur lors du chargement de la boutique.", ephemeral=True)
     
     @discord.ui.button(label="💰 Mon argent", style=discord.ButtonStyle.secondary)
     async def check_balance(self, interaction: discord.Interaction, button: Button):
         balance = self.db.user_get_balance(interaction.user.id)
         if balance is None:
             self.db.user_create(interaction.user.id)
-            balance = 0
+            balance = 500  # Valeur par défaut après création
         
         await interaction.response.send_message(f"💰 Vous avez **{balance}** jetons.", ephemeral=True)
     
