@@ -60,6 +60,13 @@ class DBManager(commands.Cog):
                     )
                 ''')
 
+                # Nettoyer d'abord tous les doublons existants
+                cursor.execute("""
+                    DELETE FROM items WHERE id NOT IN (
+                        SELECT MIN(id) FROM items GROUP BY name, price
+                    )
+                """)
+                
                 # Ajouter les items par défaut seulement s'ils n'existent pas déjà
                 default_items = [
                     ("Épée en bois", 100),
@@ -70,7 +77,7 @@ class DBManager(commands.Cog):
                 ]
                 
                 for item_name, item_price in default_items:
-                    cursor.execute("SELECT COUNT(*) FROM items WHERE name = ?", (item_name,))
+                    cursor.execute("SELECT COUNT(*) FROM items WHERE name = ? AND price = ?", (item_name, item_price))
                     if cursor.fetchone()[0] == 0:
                         cursor.execute("INSERT INTO items (name, price) VALUES (?, ?)", (item_name, item_price))
 
