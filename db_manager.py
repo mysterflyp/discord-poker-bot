@@ -212,6 +212,100 @@ class DBManager(commands.Cog):
         except sqlite3.Error as e:
             print(f"Erreur SQLite : {e}")
 
+    # Créer un utilisateur simple
+    def user_create(self, user_id):
+        """Crée un utilisateur avec les valeurs par défaut."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+                if cursor.fetchone() is None:
+                    cursor.execute("INSERT INTO users (user_id, username, argent, niveau) VALUES (?, ?, ?, ?)",
+                                   (user_id, f"User_{user_id}", 500, 0))
+                    conn.commit()
+                    print(f"✅ Utilisateur {user_id} créé avec 500 jetons.")
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+
+    # Méthodes pour la boutique
+    def get_all_items(self):
+        """Retourne tous les articles de la boutique."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, name, price FROM items")
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return []
+
+    def get_item(self, item_id):
+        """Retourne les informations d'un article."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name, price FROM items WHERE id = ?", (item_id,))
+                return cursor.fetchone()
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return None
+
+    def add_item(self, name, price):
+        """Ajoute un article à la boutique."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO items (name, price) VALUES (?, ?)", (name, price))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return False
+
+    def remove_item(self, item_id):
+        """Supprime un article de la boutique."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM items WHERE id = ?", (item_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return False
+
+    def purchase_item(self, user_id, item_id, price):
+        """Effectue l'achat d'un article."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                # Débiter l'argent de l'utilisateur
+                cursor.execute("UPDATE users SET argent = argent - ? WHERE user_id = ?", (price, user_id))
+                # Enregistrer l'achat
+                cursor.execute("INSERT INTO purchases (user_id, item_id) VALUES (?, ?)", (user_id, item_id))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return False
+
+    def get_user_purchases(self, user_id):
+        """Retourne l'historique des achats d'un utilisateur."""
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT items.name, purchases.timestamp 
+                    FROM purchases 
+                    JOIN items ON purchases.item_id = items.id 
+                    WHERE purchases.user_id = ?
+                    ORDER BY purchases.timestamp DESC
+                """, (user_id,))
+                return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Erreur SQLite : {e}")
+            return []
+
 async def setup(bot):
     """Ajoute le Cog au bot."""
     await bot.add_cog(DBManager(bot))
