@@ -57,9 +57,6 @@ class RouletteRusse(commands.Cog):
             'total_chambers': 6
         }
         
-        # Débiter la mise
-        self._db.user_add_balance(ctx.author.id, -mise)
-        
         # Calculer le total des mises et le gain potentiel
         total_mises = sum(mise * (i + 1) for i in range(6))
         gain_potentiel = total_mises * 2
@@ -110,8 +107,8 @@ class RouletteRusse(commands.Cog):
         
         if is_bullet:
             # BANG ! Le joueur perd
-            # Calculer le total perdu (incluant la mise de base + toutes les balles tirées)
-            total_perdu = mise_base + sum(mise_base * (i + 1) for i in range(current_chamber + 1))
+            # Calculer le total perdu (seulement les balles tirées, pas la mise de base)
+            total_perdu = sum(mise_base * (i + 1) for i in range(current_chamber + 1))
             
             embed = discord.Embed(
                 title="💀 BANG !",
@@ -186,18 +183,18 @@ class RouletteRusse(commands.Cog):
         mise_base = game['mise']
         current_chamber = game['current_chamber']
         
-        # Calculer le total déjà misé (balles tirées seulement, pas la mise de base)
+        # Calculer le total déjà misé (balles tirées seulement)
         total_mise_balles = sum(mise_base * (i + 1) for i in range(current_chamber))
         
-        # Rendre seulement la mise de base au joueur
-        self._db.user_add_balance(ctx.author.id, mise_base)
+        # Ne rien rendre au joueur car il a déjà perdu l'argent des balles tirées
+        # La "fuite" permet juste d'éviter de perdre plus
         
         embed = discord.Embed(
             title="🏃 Fuite !",
             description=f"**{ctx.author.name}** a fui le combat !\n\n"
-                       f"💰 Mise de base récupérée: **{mise_base} jetons**\n"
                        f"💸 Perdu dans les balles tirées: **{total_mise_balles} jetons**\n"
-                       f"🔫 Vous aviez survécu à {current_chamber} balle(s)",
+                       f"🔫 Vous aviez survécu à {current_chamber} balle(s)\n"
+                       f"🛡️ Vous évitez de perdre plus d'argent !",
             color=discord.Color.blue()
         )
         embed.set_footer(text="🛡️ Parfois, fuir est la meilleure option...")
