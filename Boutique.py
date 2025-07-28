@@ -1,8 +1,45 @@
 
 import discord
 from discord.ext import commands
-from discord.ui import View, Select, Button
+from discord.ui import View, Select, Button, Modal, TextInput
 import sqlite3
+
+class CommentModal(Modal):
+    """Modal pour ajouter un commentaire."""
+    
+    def __init__(self, db_manager, item_id, item_name):
+        super().__init__(title=f"Commenter: {item_name}")
+        self.db = db_manager
+        self.item_id = item_id
+        self.item_name = item_name
+        
+        self.comment_input = TextInput(
+            label="Votre commentaire",
+            placeholder="Écrivez votre commentaire ici...",
+            style=discord.TextStyle.paragraph,
+            max_length=500,
+            required=True
+        )
+        self.add_item(self.comment_input)
+    
+    async def on_submit(self, interaction: discord.Interaction):
+        comment_text = self.comment_input.value.strip()
+        
+        if not comment_text:
+            await interaction.response.send_message("❌ Le commentaire ne peut pas être vide.", ephemeral=True)
+            return
+        
+        success = self.db.add_comment(
+            interaction.user.id, 
+            interaction.user.display_name, 
+            self.item_id, 
+            comment_text
+        )
+        
+        if success:
+            await interaction.response.send_message(f"✅ Commentaire ajouté à l'article **{self.item_name}**!", ephemeral=True)
+        else:
+            await interaction.response.send_message("❌ Erreur lors de l'ajout du commentaire.", ephemeral=True)
 
 class ShopView(View):
     """Vue pour afficher et gérer la boutique."""
@@ -36,6 +73,33 @@ class ShopView(View):
     
     @discord.ui.button(label="💰 Mon argent", style=discord.ButtonStyle.secondary)
     async def check_balance(self, interaction: discord.Interaction, button: Button):
+        try:
+            user_id = interaction.user.id
+            # S'assurer que l'utilisateur existe
+            if self.db.user_get_balance(user_id) is None:
+                self.db.user_create(user_id)
+            
+            balance = self.db.user_get_balance(user_id)
+            await interaction.response.send_message(f"💰 Vous avez **{balance}** jetons.", ephemeral=True)
+        except Exception as e:
+            print(f"Erreur lors de la vérification du solde: {e}")
+            await interaction.response.send_message("❌ Erreur lors de la vérification du solde.", ephemeral=True)
+    
+    @discord.ui.button(label="💬 Voir commentaires", style=discord.ButtonStyle.secondary)
+    async def view_comments(self, interaction: discord.Interaction, button: Button):
+        try:
+            items = self.db.get_all_items()
+            if not items:
+                await interaction.response.send_message("❌ Aucun article disponible.", ephemeral=True)
+                return
+            
+            # Créer une vue pour sélectionner l'article dont voir les commentaires
+            view = CommentSelectionView(self.db, items[:20])
+            await interaction.response.send_message("📝 Sélectionnez un article pour voir ses commentaires:", view=view, ephemeral=True)
+        except Exception as e:
+            print(f"Erreur lors de l'affichage des commentaires: {e}")
+            await interaction.response.send_message("❌ Erreur lors du chargement des commentaires.", ephemeral=True)tyle.secondary)
+    async def check_balance(self, interaction: discord.Interaction, button: Button):
         balance = self.db.user_get_balance(interaction.user.id)
         if balance is None:
             self.db.user_create(interaction.user.id)
@@ -55,6 +119,81 @@ class ShopView(View):
             embed.add_field(name=item_name, value=f"Acheté le: {timestamp}", inline=False)
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+class CommentSelectionView(View):
+    """Vue pour sélectionner un article pour voir/ajouter des commentaires."""
+    
+    def __init__(self, db_manager, items):
+        super().__init__(timeout=60)
+        self.db = db_manager
+        self.items = items
+        
+        # Menu déroulant pour sélectionner l'article
+        options = []
+        for item_id, name, price in items:
+            display_name = name[:100] if len(name) > 100 else name
+            options.append(discord.SelectOption(
+                label=display_name,
+                description=f"Prix: {price} jetons",
+                value=str(item_id)
+            ))
+        
+        if options:
+            self.select_menu = Select(placeholder="Choisissez un article...", options=options)
+            self.select_menu.callback = self.article_selected
+            self.add_item(self.select_menu)
+    
+    async def article_selected(self, interaction: discord.Interaction):
+        item_id = int(self.select_menu.values[0])
+        
+        # Trouver l'article sélectionné
+        selected_item = None
+        for item in self.items:
+            if item[0] == item_id:
+                selected_item = item
+                break
+        
+        if not selected_item:
+            await interaction.response.send_message("❌ Article introuvable.", ephemeral=True)
+            return
+        
+        item_name = selected_item[1]
+        comments = self.db.get_item_comments(item_id)
+        
+        embed = discord.Embed(
+            title=f"💬 Commentaires: {item_name}",
+            color=discord.Color.blue()
+        )
+        
+        if comments:
+            for username, comment_text, timestamp in comments[:10]:  # Limiter à 10 commentaires
+                embed.add_field(
+                    name=f"👤 {username}",
+                    value=f"{comment_text}\n*{timestamp}*",
+                    inline=False
+                )
+            if len(comments) > 10:
+                embed.set_footer(text=f"Affichage de 10 commentaires sur {len(comments)}")
+        else:
+            embed.description = "Aucun commentaire pour cet article."
+        
+        # Créer une vue avec bouton pour ajouter un commentaire
+        view = CommentActionView(self.db, item_id, item_name)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+class CommentActionView(View):
+    """Vue avec actions pour les commentaires."""
+    
+    def __init__(self, db_manager, item_id, item_name):
+        super().__init__(timeout=60)
+        self.db = db_manager
+        self.item_id = item_id
+        self.item_name = item_name
+    
+    @discord.ui.button(label="➕ Ajouter commentaire", style=discord.ButtonStyle.green)
+    async def add_comment(self, interaction: discord.Interaction, button: Button):
+        modal = CommentModal(self.db, self.item_id, self.item_name)
+        await interaction.response.send_modal(modal)
 
 class PurchaseView(View):
     """Vue pour acheter des articles."""

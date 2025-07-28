@@ -442,6 +442,75 @@ class BotCommands(commands.Cog):
         """Répond avec un message de bienvenue."""
         await ctx.send(f"Salut {ctx.author.mention} ! 😊")
 
+    @commands.command(name="commenter")
+    async def commenter(self, ctx, item_id: int, *, comment_text: str):
+        """Ajoute un commentaire à un article. Usage: $commenter <id_article> <commentaire>"""
+        if not self._db:
+            await ctx.send("❌ La base de données n'est pas disponible.")
+            return
+        
+        # Vérifier que l'article existe
+        item = self._db.get_item(item_id)
+        if not item:
+            await ctx.send(f"❌ Aucun article trouvé avec l'ID {item_id}.")
+            return
+        
+        item_name, item_price = item
+        
+        # S'assurer que l'utilisateur existe
+        if self._db.user_get_balance(ctx.author.id) is None:
+            self._db.user_create(ctx.author.id)
+        
+        success = self._db.add_comment(
+            ctx.author.id,
+            ctx.author.display_name,
+            item_id,
+            comment_text
+        )
+        
+        if success:
+            await ctx.send(f"✅ Commentaire ajouté à l'article **{item_name}**!")
+        else:
+            await ctx.send("❌ Erreur lors de l'ajout du commentaire.")
+
+    @commands.command(name="voir_commentaires")
+    async def voir_commentaires(self, ctx, item_id: int):
+        """Affiche les commentaires d'un article. Usage: $voir_commentaires <id_article>"""
+        if not self._db:
+            await ctx.send("❌ La base de données n'est pas disponible.")
+            return
+        
+        # Vérifier que l'article existe
+        item = self._db.get_item(item_id)
+        if not item:
+            await ctx.send(f"❌ Aucun article trouvé avec l'ID {item_id}.")
+            return
+        
+        item_name, item_price = item
+        comments = self._db.get_item_comments(item_id)
+        
+        if not comments:
+            await ctx.send(f"💬 Aucun commentaire pour l'article **{item_name}**.")
+            return
+        
+        embed = discord.Embed(
+            title=f"💬 Commentaires: {item_name}",
+            description=f"Prix: {item_price} jetons",
+            color=discord.Color.blue()
+        )
+        
+        for username, comment_text, timestamp in comments[:10]:  # Limiter à 10 commentaires
+            embed.add_field(
+                name=f"👤 {username}",
+                value=f"{comment_text}\n*{timestamp}*",
+                inline=False
+            )
+        
+        if len(comments) > 10:
+            embed.set_footer(text=f"Affichage de 10 commentaires sur {len(comments)}")
+        
+        await ctx.send(embed=embed)
+
 
 # Fonction pour ajouter les commandes au bot
 async def setup(bot):
