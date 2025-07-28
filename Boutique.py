@@ -22,8 +22,11 @@ class ShopView(View):
             items_display = items[:20]
 
             embed = discord.Embed(title="🏪 Boutique", color=discord.Color.blue())
-            for item_id, name, price in items_display:
-                embed.add_field(name=f"{name}", value=f"Prix: {price} jetons", inline=False)
+            for item_id, name, price, description in items_display:
+                desc_text = f"Prix: {price} jetons"
+                if description:
+                    desc_text += f"\n📝 {description}"
+                embed.add_field(name=f"{name}", value=desc_text, inline=False)
 
             if len(items) > 20:
                 embed.set_footer(text=f"Affichage de 20 articles sur {len(items)} disponibles")
@@ -71,12 +74,17 @@ class PurchaseView(View):
         # Créer un menu déroulant avec les articles (limité à 20 pour Discord)
         options = []
         items_limited = items[:20]  # Discord limite à 25 options max
-        for item_id, name, price in items_limited:
+        for item_id, name, price, description in items_limited:
             # Limiter la longueur du nom à 100 caractères (limite Discord)
             display_name = name[:100] if len(name) > 100 else name
+            # Limiter la description à 100 caractères pour Discord
+            desc_text = f"Prix: {price} jetons"
+            if description:
+                short_desc = description[:50] + "..." if len(description) > 50 else description
+                desc_text = f"{short_desc} - {price} jetons"
             options.append(discord.SelectOption(
                 label=display_name,
-                description=f"Prix: {price} jetons",
+                description=desc_text[:100],  # Discord limite à 100 caractères
                 value=str(item_id)
             ))
 
@@ -104,13 +112,15 @@ class ItemSelect(Select):
             await interaction.response.send_message("❌ Article introuvable.", ephemeral=True)
             return
 
-        item_name, item_price = item_info
+        item_name, item_price, item_description = item_info
         user_balance = self.db.user_get_balance(user_id)
 
         # Vérifier si l'utilisateur a assez d'argent
         if user_balance < item_price:
+            desc_text = f"\n📝 {item_description}" if item_description else ""
             await interaction.response.send_message(
                 f"❌ Vous n'avez pas assez de jetons!\n"
+                f"**{item_name}**{desc_text}\n"
                 f"Prix: {item_price} jetons\n"
                 f"Votre solde: {user_balance} jetons",
                 ephemeral=True
@@ -121,9 +131,10 @@ class ItemSelect(Select):
         success = self.db.purchase_item(user_id, item_id, item_price)
         if success:
             new_balance = user_balance - item_price
+            desc_text = f"\n📝 {item_description}" if item_description else ""
             await interaction.response.send_message(
                 f"✅ Achat réussi!\n"
-                f"Vous avez acheté: **{item_name}**\n"
+                f"Vous avez acheté: **{item_name}**{desc_text}\n"
                 f"Prix: {item_price} jetons\n"
                 f"Nouveau solde: {new_balance} jetons",
                 ephemeral=True

@@ -46,7 +46,8 @@ class DBManager(commands.Cog):
                     CREATE TABLE IF NOT EXISTS items (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
-                        price INTEGER NOT NULL
+                        price INTEGER NOT NULL,
+                        description TEXT DEFAULT ''
                     )
                 ''')
 
@@ -71,14 +72,14 @@ class DBManager(commands.Cog):
                 
                 # Ajouter les items par défaut seulement s'ils n'existent pas déjà
                 default_items = [
-                    ("Roulette russe", 200),
-                    ("VIP", 500000)
+                    ("Roulette russe", 200, "Un jeu dangereux qui peut vous faire gagner ou perdre gros !"),
+                    ("VIP", 500000, "Accès VIP au serveur avec des privilèges exclusifs")
                 ]
                 
-                for item_name, item_price in default_items:
+                for item_name, item_price, item_desc in default_items:
                     cursor.execute("SELECT COUNT(*) FROM items WHERE name = ? AND price = ?", (item_name, item_price))
                     if cursor.fetchone()[0] == 0:
-                        cursor.execute("INSERT INTO items (name, price) VALUES (?, ?)", (item_name, item_price))
+                        cursor.execute("INSERT INTO items (name, price, description) VALUES (?, ?, ?)", (item_name, item_price, item_desc))
 
                 conn.commit()
                 print("Base de données initialisée avec succès.")
@@ -237,7 +238,7 @@ class DBManager(commands.Cog):
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, name, price FROM items")
+                cursor.execute("SELECT id, name, price, description FROM items")
                 return cursor.fetchall()
         except sqlite3.Error as e:
             print(f"Erreur SQLite : {e}")
@@ -248,18 +249,18 @@ class DBManager(commands.Cog):
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT name, price FROM items WHERE id = ?", (item_id,))
+                cursor.execute("SELECT name, price, description FROM items WHERE id = ?", (item_id,))
                 return cursor.fetchone()
         except sqlite3.Error as e:
             print(f"Erreur SQLite : {e}")
             return None
 
-    def add_item(self, name, price):
+    def add_item(self, name, price, description=""):
         """Ajoute un article à la boutique."""
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO items (name, price) VALUES (?, ?)", (name, price))
+                cursor.execute("INSERT INTO items (name, price, description) VALUES (?, ?, ?)", (name, price, description))
                 conn.commit()
                 return True
         except sqlite3.Error as e:
