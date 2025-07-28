@@ -26,8 +26,8 @@ class RouletteRusse(commands.Cog):
             await ctx.send("🎲 **Roulette Russe Progressive** 🎲\n"
                           "Utilisez `$roulette <mise>` pour jouer !\n"
                           "• 1 balle sur 6 chambres\n"
-                          "• **Système progressif**: Balle 1 = mise×1, Balle 2 = mise×2, etc.\n"
-                          "• Si vous survivez aux 6 balles: gain total ×2\n"
+                          "• **Mise unique**: votre mise est prélevée une seule fois au début\n"
+                          "• Si vous survivez aux 6 balles: gain = mise × 12\n"
                           "• Si vous tombez sur la balle: vous perdez tout\n"
                           "• Vous pouvez fuir pour récupérer votre mise de base\n"
                           "• Mise minimum: 1 jeton")
@@ -49,6 +49,9 @@ class RouletteRusse(commands.Cog):
             await ctx.send(f"💰 Solde insuffisant ! Vous avez {balance} jetons, mais vous voulez miser {mise} jetons.")
             return
         
+        # Débiter la mise de base une seule fois
+        self._db.user_add_balance(ctx.author.id, -mise)
+        
         # Créer une nouvelle partie
         self.games[ctx.author.id] = {
             'mise': mise,
@@ -57,16 +60,17 @@ class RouletteRusse(commands.Cog):
             'total_chambers': 6
         }
         
-        # Calculer le total des mises et le gain potentiel
-        total_mises = sum(mise * (i + 1) for i in range(6))
+        # Calculer le gain potentiel (mise × 6 chambres × 2)
+        total_mises = mise * 6
+        gain_potentiel = total_mises * 2
+        
         gain_potentiel = total_mises * 2
         
         embed = discord.Embed(
-            title="🎲 Roulette Russe Progressive",
-            description=f"**{ctx.author.name}** a misé **{mise} jetons** de base !\n\n"
+            title="🎲 Roulette Russe",
+            description=f"**{ctx.author.name}** a misé **{mise} jetons** !\n\n"
                        f"🔫 Revolver chargé avec 1 balle sur 6 chambres\n"
-                       f"💰 Système progressif: 1×{mise}, 2×{mise}, 3×{mise}, 4×{mise}, 5×{mise}, 6×{mise}\n"
-                       f"💸 Total à miser: **{total_mises} jetons**\n"
+                       f"💰 Mise unique de **{mise} jetons** (déjà prélevée)\n"
                        f"🏆 Gain potentiel: **{gain_potentiel} jetons**\n\n"
                        f"Tapez `$tirer` pour tirer ou `$fuir` pour abandonner",
             color=discord.Color.red()
@@ -88,34 +92,20 @@ class RouletteRusse(commands.Cog):
         chambers = game['chambers']
         mise_base = game['mise']
         
-        # Calculer la mise actuelle (progressive)
-        mise_actuelle = mise_base * (current_chamber + 1)
-        
-        # Vérifier si le joueur a assez de jetons pour cette balle
-        balance = self._db.user_get_balance(ctx.author.id)
-        if balance < mise_actuelle:
-            await ctx.send(f"💰 Solde insuffisant pour la balle {current_chamber + 1} ! "
-                          f"Il vous faut {mise_actuelle} jetons mais vous n'avez que {balance} jetons.\n"
-                          f"Utilisez `$fuir` pour récupérer votre mise de base.")
-            return
-        
-        # Débiter SEULEMENT la mise pour cette balle (pas le total cumulé)
-        self._db.user_add_balance(ctx.author.id, -mise_actuelle)
+        # Pas de débit supplémentaire - la mise de base a déjà été prélevée
         
         # Vérifier la chambre actuelle
         is_bullet = chambers[current_chamber]
         
         if is_bullet:
             # BANG ! Le joueur perd
-            # Calculer le total perdu (seulement les balles tirées, pas la mise de base)
-            total_perdu = sum(mise_base * (i + 1) for i in range(current_chamber + 1))
             
             embed = discord.Embed(
                 title="💀 BANG !",
                 description=f"**{ctx.author.name}** est tombé sur la balle !\n\n"
-                           f"💸 Mise de cette balle: **{mise_actuelle} jetons**\n"
-                           f"💸 Total perdu: **{total_perdu} jetons**\n"
-                           f"🪦 Chambre fatale: {current_chamber + 1}/6",
+                           f"💸 Mise perdue: **{mise_base} jetons**\n"
+                           f"🪦 Chambre fatale: {current_chamber + 1}/6\n"
+                           f"🎯 Vous aviez survécu à {current_chamber} balle(s)",
                 color=discord.Color.dark_red()
             )
             embed.set_footer(text="☠️ La chance n'était pas de votre côté...")
@@ -129,17 +119,16 @@ class RouletteRusse(commands.Cog):
             
             if game['current_chamber'] >= 6:
                 # Le joueur a survécu à toutes les chambres !
-                # Calculer le gain total (somme de toutes les mises × 2)
-                total_mise = sum(mise_base * (i + 1) for i in range(6))
-                gain = total_mise * 2
+                # Gain = mise de base × 12 (6 chambres × 2)
+                gain = mise_base * 12
                 self._db.user_add_balance(ctx.author.id, gain)
                 
                 embed = discord.Embed(
                     title="🎉 VICTOIRE !",
                     description=f"**{ctx.author.name}** a survécu aux 6 chambres !\n\n"
-                               f"💰 Total misé: **{total_mise} jetons**\n"
+                               f"💰 Mise payée: **{mise_base} jetons**\n"
                                f"💰 Vous gagnez: **{gain} jetons** !\n"
-                               f"🏆 Profit net: **{gain - total_mise} jetons**\n"
+                               f"🏆 Profit net: **{gain - mise_base} jetons**\n"
                                f"🏆 Vous êtes un vrai survivant !",
                     color=discord.Color.gold()
                 )
@@ -151,20 +140,15 @@ class RouletteRusse(commands.Cog):
             else:
                 # Le joueur peut continuer
                 remaining = 6 - game['current_chamber']
-                prochaine_mise = mise_base * (game['current_chamber'] + 1)
-                
-                # Calculer le gain potentiel total
-                total_mise_future = sum(mise_base * (i + 1) for i in range(6))
-                gain_potentiel = total_mise_future * 2
+                gain_potentiel = mise_base * 12  # 6 chambres × 2
                 
                 embed = discord.Embed(
                     title="😅 Click !",
                     description=f"**{ctx.author.name}** a survécu à la balle {current_chamber + 1} !\n\n"
-                               f"💸 Mise payée: **{mise_actuelle} jetons**\n"
                                f"🔫 Chambres restantes: **{remaining}**\n"
-                               f"💰 Prochaine mise: **{prochaine_mise} jetons**\n"
-                               f"🏆 Gain potentiel total: **{gain_potentiel} jetons**\n\n"
-                               f"Tapez `$tirer` pour continuer ou `$fuir` pour récupérer votre mise de base",
+                               f"💰 Mise en jeu: **{mise_base} jetons**\n"
+                               f"🏆 Gain potentiel: **{gain_potentiel} jetons**\n\n"
+                               f"Tapez `$tirer` pour continuer ou `$fuir` pour abandonner",
                     color=discord.Color.orange()
                 )
                 embed.set_footer(text="💡 Plus vous allez loin, plus ça rapporte !")
@@ -183,18 +167,14 @@ class RouletteRusse(commands.Cog):
         mise_base = game['mise']
         current_chamber = game['current_chamber']
         
-        # Calculer le total déjà misé (balles tirées seulement)
-        total_mise_balles = sum(mise_base * (i + 1) for i in range(current_chamber))
-        
-        # Ne rien rendre au joueur car il a déjà perdu l'argent des balles tirées
-        # La "fuite" permet juste d'éviter de perdre plus
+        # Le joueur abandonne et perd sa mise de base
         
         embed = discord.Embed(
             title="🏃 Fuite !",
-            description=f"**{ctx.author.name}** a fui le combat !\n\n"
-                       f"💸 Perdu dans les balles tirées: **{total_mise_balles} jetons**\n"
+            description=f"**{ctx.author.name}** a abandonné la partie !\n\n"
+                       f"💸 Mise perdue: **{mise_base} jetons**\n"
                        f"🔫 Vous aviez survécu à {current_chamber} balle(s)\n"
-                       f"🛡️ Vous évitez de perdre plus d'argent !",
+                       f"🛡️ Parfois, il vaut mieux partir tant qu'on est en vie !",
             color=discord.Color.blue()
         )
         embed.set_footer(text="🛡️ Parfois, fuir est la meilleure option...")
