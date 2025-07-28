@@ -69,9 +69,6 @@ class DBManager(commands.Cog):
                 
                 # Ajouter les items par défaut seulement s'ils n'existent pas déjà
                 default_items = [
-                    ("Épée en bois", 100),
-                    ("Arc en fer", 250),
-                    ("Potion de soin", 50),
                     ("Roulette russe", 200),
                     ("VIP", 500000)
                 ]
