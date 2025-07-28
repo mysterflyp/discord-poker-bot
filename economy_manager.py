@@ -59,6 +59,11 @@ class EconomyManager(commands.Cog):
     async def on_message(self, message):
         if message.author.bot or not self._db:
             return
+        
+        # Ne pas donner d'argent/XP pour les commandes du bot
+        if message.content.startswith('$'):
+            return
+            
         user_id = message.author.id
         if self._db.user_get_niveau(user_id) is None:
             self._db.user_create(user_id)
