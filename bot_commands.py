@@ -416,6 +416,10 @@ class BotCommands(commands.Cog):
         12. $coucher - Se couche.
         13. $partir - Quitte la partie
         14. $boutique - Ouvre la boutique.
+        15. $roulette <mise> - Joue à la roulette russe.
+        16. $tirer - Tire une balle dans la roulette russe.
+        17. $fuir - Abandonne la partie de roulette russe.
+        18. $roulette_stats - Affiche vos statistiques.
 
         Commandes admin
         1. $donner @utilisateur montant - Donne de l'argent à un utilisateur.

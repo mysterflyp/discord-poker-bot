@@ -65,6 +65,7 @@ async def load_extensions():
     await bot.load_extension("economy_manager")
     await bot.load_extension("bot_commands")
     await bot.load_extension("Boutique")
+    await bot.load_extension("roulette_russe")
 
 async def main():
     async with bot:
