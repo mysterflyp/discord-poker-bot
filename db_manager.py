@@ -41,15 +41,22 @@ class DBManager(commands.Cog):
                 )
                 ''')
                 
-                # Table des items
+                # Table des items - vérifier et ajouter la colonne description si elle n'existe pas
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS items (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT NOT NULL,
-                        price INTEGER NOT NULL,
-                        description TEXT DEFAULT ''
+                        price INTEGER NOT NULL
                     )
                 ''')
+                
+                # Ajouter la colonne description si elle n'existe pas
+                try:
+                    cursor.execute("ALTER TABLE items ADD COLUMN description TEXT DEFAULT ''")
+                    print("✅ Colonne description ajoutée à la table items.")
+                except sqlite3.OperationalError:
+                    # La colonne existe déjà, c'est normal
+                    pass
 
                 # Table des achats
                 cursor.execute('''

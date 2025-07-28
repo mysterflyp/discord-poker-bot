@@ -173,15 +173,16 @@ class Boutique(commands.Cog):
 
     @commands.command(name="add_item")
     @commands.has_permissions(administrator=True)
-    async def add_item(self, ctx, price: int, *, name: str):
-        """Ajoute un article à la boutique. Usage: $add_item <prix> <nom>"""
+    async def add_item(self, ctx, price: int, name: str, *, description: str = ""):
+        """Ajoute un article à la boutique. Usage: $add_item <prix> <nom> [description]"""
         if not self._db:
             await ctx.send("❌ La boutique n'est pas disponible.")
             return
 
-        success = self._db.add_item(name, price)
+        success = self._db.add_item(name, price, description)
         if success:
-            await ctx.send(f"✅ Article **{name}** ajouté à la boutique pour {price} jetons.")
+            desc_text = f" avec la description: {description}" if description else ""
+            await ctx.send(f"✅ Article **{name}** ajouté à la boutique pour {price} jetons{desc_text}.")
         else:
             await ctx.send("❌ Erreur lors de l'ajout de l'article.")
 
@@ -213,8 +214,9 @@ class Boutique(commands.Cog):
             return
 
         embed = discord.Embed(title="📋 Liste des articles", color=discord.Color.blue())
-        for item_id, name, price in items:
-            embed.add_field(name=f"ID: {item_id}", value=f"{name} - {price} jetons", inline=False)
+        for item_id, name, price, description in items:
+            desc_text = f"\n📝 {description}" if description else ""
+            embed.add_field(name=f"ID: {item_id}", value=f"{name} - {price} jetons{desc_text}", inline=False)
 
         await ctx.send(embed=embed)
 
