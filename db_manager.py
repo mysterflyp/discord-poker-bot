@@ -60,18 +60,7 @@ class DBManager(commands.Cog):
                     )
                 ''')
 
-                # Table des commentaires
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS comments (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        username TEXT NOT NULL,
-                        item_id INTEGER NOT NULL,
-                        comment_text TEXT NOT NULL,
-                        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE
-                    )
-                ''')
+                
 
                 # Nettoyer d'abord tous les doublons existants
                 cursor.execute("""
@@ -321,46 +310,7 @@ class DBManager(commands.Cog):
             print(f"Erreur SQLite : {e}")
             return []
 
-    def add_comment(self, user_id, username, item_id, comment_text):
-        """Ajoute un commentaire à un article."""
-        try:
-            with sqlite3.connect(DB_PATH) as conn:
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO comments (user_id, username, item_id, comment_text) VALUES (?, ?, ?, ?)", 
-                             (user_id, username, item_id, comment_text))
-                conn.commit()
-                return True
-        except sqlite3.Error as e:
-            print(f"Erreur SQLite : {e}")
-            return False
-
-    def get_item_comments(self, item_id):
-        """Retourne tous les commentaires d'un article."""
-        try:
-            with sqlite3.connect(DB_PATH) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT username, comment_text, timestamp 
-                    FROM comments 
-                    WHERE item_id = ? 
-                    ORDER BY timestamp DESC
-                """, (item_id,))
-                return cursor.fetchall()
-        except sqlite3.Error as e:
-            print(f"Erreur SQLite : {e}")
-            return []
-
-    def delete_comment(self, comment_id, user_id):
-        """Supprime un commentaire (seulement si c'est l'auteur)."""
-        try:
-            with sqlite3.connect(DB_PATH) as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM comments WHERE id = ? AND user_id = ?", (comment_id, user_id))
-                conn.commit()
-                return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            print(f"Erreur SQLite : {e}")
-            return False
+    
 
 async def setup(bot):
     """Ajoute le Cog au bot."""
