@@ -102,7 +102,7 @@ class RouletteRusse(commands.Cog):
                           f"Utilisez `$fuir` pour récupérer votre mise de base.")
             return
         
-        # Débiter la mise pour cette balle
+        # Débiter SEULEMENT la mise pour cette balle (pas le total cumulé)
         self._db.user_add_balance(ctx.author.id, -mise_actuelle)
         
         # Vérifier la chambre actuelle
@@ -110,8 +110,8 @@ class RouletteRusse(commands.Cog):
         
         if is_bullet:
             # BANG ! Le joueur perd
-            # Calculer le total perdu
-            total_perdu = sum(mise_base * (i + 1) for i in range(current_chamber + 1))
+            # Calculer le total perdu (incluant la mise de base + toutes les balles tirées)
+            total_perdu = mise_base + sum(mise_base * (i + 1) for i in range(current_chamber + 1))
             
             embed = discord.Embed(
                 title="💀 BANG !",
@@ -186,8 +186,8 @@ class RouletteRusse(commands.Cog):
         mise_base = game['mise']
         current_chamber = game['current_chamber']
         
-        # Calculer le total déjà misé
-        total_mise = sum(mise_base * (i + 1) for i in range(current_chamber))
+        # Calculer le total déjà misé (balles tirées seulement, pas la mise de base)
+        total_mise_balles = sum(mise_base * (i + 1) for i in range(current_chamber))
         
         # Rendre seulement la mise de base au joueur
         self._db.user_add_balance(ctx.author.id, mise_base)
@@ -196,7 +196,7 @@ class RouletteRusse(commands.Cog):
             title="🏃 Fuite !",
             description=f"**{ctx.author.name}** a fui le combat !\n\n"
                        f"💰 Mise de base récupérée: **{mise_base} jetons**\n"
-                       f"💸 Total perdu dans les balles: **{total_mise} jetons**\n"
+                       f"💸 Perdu dans les balles tirées: **{total_mise_balles} jetons**\n"
                        f"🔫 Vous aviez survécu à {current_chamber} balle(s)",
             color=discord.Color.blue()
         )
