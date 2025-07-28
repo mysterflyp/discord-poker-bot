@@ -98,14 +98,7 @@ class ShopView(View):
             await interaction.response.send_message("📝 Sélectionnez un article pour voir ses commentaires:", view=view, ephemeral=True)
         except Exception as e:
             print(f"Erreur lors de l'affichage des commentaires: {e}")
-            await interaction.response.send_message("❌ Erreur lors du chargement des commentaires.", ephemeral=True)tyle.secondary)
-    async def check_balance(self, interaction: discord.Interaction, button: Button):
-        balance = self.db.user_get_balance(interaction.user.id)
-        if balance is None:
-            self.db.user_create(interaction.user.id)
-            balance = 100  # Valeur par défaut après création
-        
-        await interaction.response.send_message(f"💰 Vous avez **{balance}** jetons.", ephemeral=True)
+            await interaction.response.send_message("❌ Erreur lors du chargement des commentaires.", ephemeral=True)
     
     @discord.ui.button(label="📦 Mes achats", style=discord.ButtonStyle.success)
     async def my_purchases(self, interaction: discord.Interaction, button: Button):
