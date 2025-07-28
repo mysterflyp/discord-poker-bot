@@ -424,6 +424,11 @@ class BotCommands(commands.Cog):
         4. $reset_balance @utilisateur - Réinitialise l'argent de l'utilisateur.
         5. $user_info @utilisateur - Affiche les informations sur un utilisateur.
         6. $reset_poker - Réinitialise le poker.
+        7. $crediter <@utilisateur> <montant> - Crédite un utilisateur.
+        8. $add_item <prix> <nom> <description> - Ajoute un article à la boutique.
+        9. $remove_item id - Supprime un article de la boutique.
+        10. $list_items - Liste tous les articles de la boutique avec leurs IDs.
+        
         
 
         Utilisez ces commandes pour interagir avec le bot.
