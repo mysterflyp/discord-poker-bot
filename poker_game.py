@@ -6,7 +6,7 @@ from discord.ext import commands
 import discord
 import asyncio
 from discord.ui import Button, View, Modal, TextInput
-from discord.webhook.async_ import interaction_message_response_params
+
 
 from db_manager import DBManager
 
@@ -58,7 +58,7 @@ class FakeMember:
 
 
 def __repr__(self):
-    return f"<FakeMember name={self.name} id={self.id}>"
+        return f"<FakeMember name={self.name} id={self.id}>".name} id={self.id}>"
 
 
 class PokerGame:

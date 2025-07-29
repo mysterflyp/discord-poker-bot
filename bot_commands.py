@@ -60,7 +60,9 @@ class BotCommands(commands.Cog):
     # FIXME : Il faut verifier que les users existent sinon les get/add_balance vont crasher
     @commands.command(name="donner")
     async def donner(self, ctx, target_member: discord.Member, amount: int):
-        author_balance = self._db.get_balance(ctx.author.id)
+        self._db.user_ensure_exist(ctx.author)
+        self._db.user_ensure_exist(target_member)
+        author_balance = self._db.user_get_balance(ctx.author.id)
         if author_balance < amount:
             await ctx.send(
                 f"{ctx.author.mention}, votre solde est de {author_balance} jetons, vous n'avez pas assez pour donner {amount} jetons."
@@ -78,7 +80,7 @@ class BotCommands(commands.Cog):
 
     # Gestion des erreurs pour les commandes nécessitant des permissions administratives
     @donner.error
-    async def donner_error(ctx, error):
+    async def donner_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send(
                 "Vous n'avez pas la permission d'utiliser cette commande.")
@@ -271,7 +273,7 @@ class BotCommands(commands.Cog):
 
         self.bot.game.start_game()
         self.bot.game.start_betting_round()
-        self.bot.game.display_entry_window(ctx)
+        await self.bot.game.display_entry_window(ctx)
 
 
         player_hands = self.bot.game.get_players_hands()

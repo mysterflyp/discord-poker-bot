@@ -64,8 +64,6 @@ class RouletteRusse(commands.Cog):
         total_mises = mise * 6
         gain_potentiel = total_mises * 2
         
-        gain_potentiel = total_mises * 2
-        
         embed = discord.Embed(
             title="🎲 Roulette Russe",
             description=f"**{ctx.author.name}** a misé **{mise} jetons** !\n\n"
