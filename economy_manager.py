@@ -41,7 +41,7 @@ class EconomyManager(commands.Cog):
                     if self._db.user_get_niveau(member.id) is None:
                         self._db.user_create(member.id)
                     self._db.user_add_balance(member.id, 3)
-                    print(f"💰 {member.display_name} a reçu 25 jetons (vocal).")
+                    print(f"💰 {member.display_name} a reçu 3 jetons (vocal).")
 
     @tasks.loop(seconds=LEVEL_INTERVAL)
     async def give_level_periodically(self):
